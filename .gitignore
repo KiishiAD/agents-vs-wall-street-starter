@@ -1,0 +1,10 @@
+node_modules/
+__pycache__/
+*.py[cod]
+research/
+.DS_Store
+.env
+.env.*
+!.env.example
+entry.json
+submission/*.xlsx
