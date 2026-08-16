@@ -1,7 +1,7 @@
 ---
 name: company-profile
 description: Build lightweight company profiles as structured JSON.
-version: 0.1.0
+version: 0.2.0
 author: Kaylan, Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -26,9 +26,10 @@ Return one machine-readable JSON object. Make the profile specific enough to dis
 3. **Lightweight by default.** Use the smallest authoritative source set that can satisfy the profile contract.
 4. **Metric-aware, not metric-led.** Optional target metrics may change emphasis, but they must not turn profile construction into signal research.
 5. **Repository first.** Prefer the supplied historical corpus, then use public research only for a material unresolved gap.
-6. **Evidence-grounded.** Inspect every source recorded in the source log. Never treat a search result or snippet as a reviewed source.
-7. **Explicit uncertainty.** Use `null`, empty arrays, and gap records rather than inventing missing facts.
-8. **JSON only.** The final response must contain valid JSON with no Markdown fence, preamble, commentary, or trailing text.
+6. **Evidence-grounded.** Give every externally verifiable claim claim-level source IDs that resolve to an inspected source-log entry. Never treat a search result or snippet as a reviewed source.
+7. **Facts and judgments are distinct.** Mark reported facts, calculations, model judgments, assumptions, and unknowns explicitly. A citation to underlying evidence does not turn a model judgment into a reported fact.
+8. **Explicit uncertainty.** Use `null`, empty arrays, and gap records rather than inventing missing facts.
+9. **JSON only.** The final response must contain valid JSON with no Markdown fence, preamble, commentary, or trailing text.
 
 ## Boundaries
 
@@ -46,6 +47,56 @@ This skill must not:
 - present assumptions, interpretations, or unsupported search snippets as reported facts.
 
 The profile should explain **what may matter and where later workers may need to look**. It should not determine **what the final signals are or what they imply for the forecast**.
+
+## Evidence, interpretation, and provenance policy
+
+Every non-null narrative claim, classification, calculation, or assumption must declare one `basis` value:
+
+- `reported_fact`: a faithful quote or paraphrase of an inspected source;
+- `calculated`: simple arithmetic derived from reported facts, never a forecast or model output;
+- `model_judgment`: an interpretation, synthesis, relative assessment, or materiality classification made by the profile author;
+- `assumption`: an explicitly stated premise not established as fact by the inspected sources;
+- `unknown`: the value is unresolved and is not being inferred.
+
+Use the sourced-claim shape for narrative fields and string-array items:
+
+```json
+{
+  "statement": "The company primarily sells through company-operated stores.",
+  "basis": "reported_fact",
+  "source_ids": ["SRC-001"],
+  "source_locators": {
+    "SRC-001": "Item 1, Business"
+  }
+}
+```
+
+`source_locators` is optional. Prefer stable headings, filing items, footnotes, tables, or page labels. Use a repository line range only when it refers to the exact fixed file inspected. Never invent a locator, and never use an unstable search-result position.
+
+Apply these invariants:
+
+- `reported_fact` requires one to three `source_ids` that directly support the claim.
+- `calculated` requires one to three `source_ids` plus a concise `rationale` containing the inputs and arithmetic method.
+- `model_judgment` requires one to three `source_ids` plus a concise `rationale`—or the contract-specific `*_rationale` field—explaining how the cited facts support—but do not themselves state—the conclusion. When a judgment is based solely on caller input, use `source_ids: []` and identify the normalized input path in `input_fields` instead.
+- `assumption` requires a concise `rationale`; normally use `source_ids: []`. Add `input_fields` when the premise came from caller input. Do not use an assumption to fill a missing company fact that belongs in `uncertainties_and_gaps`.
+- `unknown` requires a null claim value or classification and `source_ids: []`; add a gap record when the unknown is material.
+- Every source ID must resolve to exactly one entry in `sources`. Do not put URLs, repository paths, or unregistered IDs directly in claim objects.
+- `input_fields` may identify only normalized caller-input paths; it is not a replacement for source IDs on externally verifiable company claims.
+- `source_locators`, when present, may contain only keys already listed in that claim's `source_ids`.
+- Cite the strongest direct source for the claim; do not attach every reviewed source. Use multiple IDs only for corroboration, synthesis, or a documented conflict.
+- Source-log `used_for` is a section inventory, not a substitute for claim-level `source_ids`.
+
+For grouped scalars in `company_identity`, `reporting_context`, and `metric_lenses`, use `field_provenance` to map each non-null externally verifiable field to its `basis`, supporting source IDs, required rationale, and optional locators. Input-derived metadata uses `input_fields` instead of external source IDs.
+
+Before returning, perform this provenance validation pass:
+
+1. Build the set of unique IDs from `sources`.
+2. Traverse every claim object, assessment, structured profile item, gap, and `field_provenance` entry.
+3. Apply the conditional basis rules and reject missing or disallowed evidence fields.
+4. Reject every source ID not present exactly once in the source set.
+5. Reject locator keys that are absent from the enclosing `source_ids`.
+6. Reject non-null grouped scalar fields without same-named provenance entries and provenance entries for null or nonexistent fields.
+7. For each conflict, verify that every distinct reported reading is a separate sourced claim.
 
 ## Input contract
 
@@ -279,12 +330,21 @@ Default ceilings:
 | Public sources | 0 by default; maximum 2 |
 | Targeted corpus searches | Approximately 6–10 |
 | Gap-resolution passes | 1 |
-| Extracted source material | Approximately 12,000–18,000 tokens |
+| Initial metadata per selected document | Up to 2,000 characters |
+| Context per retained search match | Approximately 1,000–1,500 characters |
+| Retained matches per search topic | Usually 1–2 |
+| Broad follow-up section reads | Maximum 2 across the profile |
+| Unique extracted source text | Target 50,000–65,000 characters; hard stop at 72,000 |
+| Extracted-source token guide | Approximately 12,000–18,000 tokens; model-dependent |
 | Final JSON | Approximately 2,000–3,500 tokens |
 | Source-log entries | Usually 3–6 |
 | Target runtime | Approximately 8–12 minutes |
 
-These are ceilings, not targets. Finish earlier when the contract is already satisfied.
+These are ceilings, not targets. Finish earlier when the contract is already satisfied. Character counts are the enforceable extraction control because token counts vary by model and tokenizer.
+
+Count only unique source text returned into the working context, including retained metadata and excerpts. Count overlapping passages once. A search operation may scan a full selected document internally, but it must return only bounded excerpts; never print or load a full document merely to search it.
+
+At 50,000 extracted characters, review the coverage matrix in Step 4 and permit further extraction only for an unresolved material row. At 65,000 characters, stop normal extraction. At the 72,000-character hard stop, record any remaining material issue in `uncertainties_and_gaps` rather than loading more source text.
 
 ## Materiality test
 
@@ -338,12 +398,23 @@ Completion criterion: every supplied metric has a justified classification, even
 - Identify the latest useful call or presentation before the cutoff.
 - Remove duplicate or administratively irrelevant candidates.
 - Add an optional fourth document only if permitted by the gap or metric rules.
+- Record the exact selected paths and initialize the extracted-character counter before substantive extraction.
 
 Completion criterion: the smallest defensible source set has been selected before substantive extraction begins.
 
 ### Step 4: Extract only orientation-level information
 
-Search selected documents for:
+Use this mandatory search-first sequence:
+
+1. Read only the frontmatter, title, table of contents where available, and at most 2,000 initial metadata characters from each selected document.
+2. Search only the selected documents. Do not search the full company corpus after the source plan has been fixed unless Step 6 authorizes the optional document.
+3. Run approximately 6–10 targeted searches covering the topics below. Combine closely related concepts into one search rather than issuing one search per output field.
+4. Retain only the best one or two matches per topic, with approximately 1,000–1,500 characters of context per match.
+5. Deduplicate overlapping passages before adding them to the extracted-character counter.
+6. Open a broader source section only when a retained excerpt cannot be interpreted safely in context. Permit no more than two such section reads across the entire profile.
+7. Update an internal coverage matrix and the cumulative unique-character count after each extraction batch.
+
+Search topics:
 
 - business model, products, services, customers, channels, and end markets;
 - segments, geographies, and material operating footprint;
@@ -354,9 +425,13 @@ Search selected documents for:
 - material industry, macroeconomic, political, geographic, regulatory, currency, commodity, and technology exposures;
 - exact supplied metric terms when moderate or highly specific.
 
-Do not extract full documents or detailed historical series. Capture concise facts and relationships sufficient to populate the JSON contract.
+The internal coverage matrix must contain one row for each of these areas: identity and cutoff; business model and revenue model; products and customers; segments and geographies; reporting and accounting context; financial drivers; cyclicality and seasonality; guidance practice; external exposures; current material changes; and supplied metric definitions. Mark each row `supported`, `not_materially_applicable`, or `gap_recorded`, and retain the supporting source ID or gap topic. The matrix is working state and must not be added to the final JSON.
 
-Completion criterion: each required section has been considered and is either supported, explicitly unknown, or not materially applicable.
+Use `search_files` for bounded content searches when available. Scope each call to the selected document or its exact directory and filter results back to the selected paths. If `search_files` is unavailable or its search backend is missing, use `execute_code` with standard-library `pathlib` and regular expressions to read only the selected paths and print bounded excerpts. The fallback must not import project modules, create indexes or notes, or write files. Do not invoke a repository helper whose write scope is unknown.
+
+Do not extract full documents, hundreds of consecutive lines, or detailed historical series. Do not use `read_file` on a large document before targeted searching except for the bounded metadata read above. Capture only concise facts and relationships sufficient to populate the JSON contract.
+
+Completion criterion: every coverage row is `supported`, `not_materially_applicable`, or `gap_recorded`; selected paths and source IDs are known; overlapping excerpts are deduplicated; and the cumulative unique extracted text remains at or below 72,000 characters.
 
 ### Step 5: Apply the materiality and company-specificity filter
 
@@ -364,12 +439,15 @@ For every proposed item:
 
 - confirm it is supported by an inspected source;
 - confirm it materially improves company orientation;
+- classify it as `reported_fact`, `calculated`, `model_judgment`, `assumption`, or `unknown`;
+- attach claim-level `source_ids` under the evidence rules above;
+- add a `rationale` when the basis is `calculated`, `model_judgment`, or `assumption`;
 - remove generic statements that could describe most companies;
 - consolidate duplicates;
 - retain only the principal products, customers, segments, geographies, drivers, and exposures;
 - move unresolved material questions to `uncertainties_and_gaps`.
 
-Completion criterion: the retained content is recognizably specific to the company and contains no filler added solely to populate fields.
+Completion criterion: the retained content is recognizably specific to the company; every non-null claim has an explicit basis and valid provenance; and no filler was added solely to populate fields.
 
 ### Step 6: Resolve material gaps once
 
@@ -378,6 +456,9 @@ Run one bounded follow-up pass only when a missing item would materially impair 
 - Search the selected corpus more narrowly first.
 - Open the optional fourth repository source if justified.
 - Use at most two public sources if the repository cannot resolve the gap and public research is allowed.
+- Keep the combined total of broad follow-up section reads at two or fewer.
+- Apply the same excerpt limits and cumulative character counter to repository and public material.
+- If resolving the gap would exceed 72,000 unique extracted characters, record the gap and stop.
 - Stop after the single follow-up pass.
 
 Completion criterion: the gap is resolved, or it is explicitly recorded without further research recursion.
@@ -392,7 +473,8 @@ When sources disagree:
 4. distinguish different segment, geographic, and customer definitions;
 5. prefer formal filings for accounting definitions;
 6. prefer newer official materials for current organization and guidance practice;
-7. record unresolved conflicts in `uncertainties_and_gaps`.
+7. preserve each conflicting reported claim separately with its own source IDs;
+8. record unresolved conflicts in `uncertainties_and_gaps`.
 
 Never silently combine inconsistent definitions.
 
@@ -400,9 +482,9 @@ Completion criterion: every material conflict is either resolved transparently o
 
 ### Step 8: Construct the JSON profile
 
-Populate the exact top-level contract below. Keep all top-level keys present. Use `null` for an unknown scalar and `[]` for no supported array items. Add a gap record when missing information is material.
+Populate the exact top-level contract below. Keep all top-level keys present. Use `null` for an unknown scalar and `[]` for no supported array items. Add a gap record when missing information is material. Replace supported narrative fields and array strings with sourced-claim objects; do not leave bare externally verifiable prose in the output.
 
-Completion criterion: the output conforms to the contract, contains no unsupported facts, and remains within the lightweight output budget.
+Completion criterion: the output conforms to the contract, contains no unsupported facts, distinguishes facts from judgments, and has claim-level source IDs that all resolve to the source log while remaining within the lightweight output budget.
 
 ### Step 9: Determine status
 
@@ -416,7 +498,7 @@ Completeness does not require every optional array to contain an item. It requir
 
 ### Step 10: Verify and return
 
-Run the verification checklist at the end of this skill. Then return the JSON object only.
+Run the verification checklist at the end of this skill. Mechanically verify unique source IDs, claim-source resolution, conditional basis rules, and locator-key resolution where tooling permits. Then return the JSON object only.
 
 ## Output contract
 
@@ -424,7 +506,7 @@ Return all of these top-level keys in this order:
 
 ```json
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "status": "complete",
   "profile_metadata": {
     "as_of_date": "2026-08-16",
@@ -443,7 +525,8 @@ Return all of these top-level keys in this order:
     "headquarters": null,
     "reporting_currency": null,
     "industry": null,
-    "company_description": null
+    "company_description": null,
+    "field_provenance": {}
   },
   "business_model": {
     "summary": null,
@@ -465,24 +548,39 @@ Return all of these top-level keys in this order:
     "fiscal_calendar_notes": [],
     "important_accounting_conventions": [],
     "company_defined_terms": [],
-    "adjusted_measures_used": []
+    "adjusted_measures_used": [],
+    "field_provenance": {}
   },
   "financial_drivers": {
     "revenue_drivers": [],
     "cost_drivers": [],
     "margin_drivers": [],
     "earnings_drivers": [],
-    "capital_intensity": "unknown",
+    "capital_intensity": {
+      "classification": "unknown",
+      "basis": "unknown",
+      "rationale": null,
+      "source_ids": []
+    },
     "working_capital_characteristics": []
   },
   "cyclicality_and_seasonality": {
     "cyclicality": null,
-    "cycle_sensitivity": "unknown",
+    "cycle_sensitivity": {
+      "classification": "unknown",
+      "basis": "unknown",
+      "rationale": null,
+      "source_ids": []
+    },
     "seasonal_patterns": [],
     "important_timing_factors": []
   },
   "guidance_practices": {
-    "provides_guidance": null,
+    "provides_guidance": {
+      "value": null,
+      "basis": "unknown",
+      "source_ids": []
+    },
     "usual_cadence": null,
     "metrics_commonly_guided": [],
     "guidance_format": [],
@@ -497,7 +595,95 @@ Return all of these top-level keys in this order:
 }
 ```
 
+Schema `0.2.0` is intentionally incompatible with `0.1.0`: narrative strings become sourced-claim objects, major classifications become sourced assessments, and field-level provenance maps are required for grouped scalars.
+
 ## Nested object contracts
+
+### Sourced claim
+
+Use this object for `company_description`, `business_model.summary`, every narrative company-profile array listed below, and any other supported free-text company claim:
+
+```json
+{
+  "statement": "Revenue is generated primarily through company-operated stores.",
+  "basis": "reported_fact",
+  "source_ids": ["SRC-001"],
+  "source_locators": {
+    "SRC-001": "Item 1, Business"
+  }
+}
+```
+
+Add `rationale` only when required by the basis rules. Keep `source_locators` optional and compact. Bare externally verifiable strings are not allowed in claim-bearing fields under schema `0.2.0`.
+
+The following arrays contain sourced-claim objects rather than strings:
+
+- `business_model.revenue_model` and `business_model.distribution_channels`;
+- `operating_structure.operating_footprint`;
+- `reporting_context.fiscal_calendar_notes`, `important_accounting_conventions`, and `adjusted_measures_used`;
+- every array under `financial_drivers` except `capital_intensity`;
+- `cyclicality_and_seasonality.seasonal_patterns` and `important_timing_factors`;
+- `guidance_practices.metrics_commonly_guided`, `guidance_format`, and `guidance_characteristics`.
+
+`guidance_practices.usual_cadence` is `null` or one sourced-claim object. `cyclicality_and_seasonality.cyclicality` is `null` or one sourced-claim object.
+
+### Sourced assessment
+
+Use this object for `financial_drivers.capital_intensity`, `cyclicality_and_seasonality.cycle_sensitivity`, and `metric_lenses[].specificity`:
+
+```json
+{
+  "classification": "high",
+  "basis": "model_judgment",
+  "rationale": "The company operates a large owned physical network and reports recurring capital expenditure requirements.",
+  "source_ids": ["SRC-001"],
+  "source_locators": {
+    "SRC-001": "Item 2, Properties"
+  }
+}
+```
+
+For capital intensity and cycle sensitivity, allowed `classification` is `low`, `moderate`, `high`, or `unknown`. For metric specificity, it is `generic`, `moderate`, or `high`. Classification is normally a `model_judgment`; do not mark it `reported_fact` merely because management discusses the underlying drivers. Use the all-unknown shape in the top-level contract when no supported capital-intensity or cycle-sensitivity assessment can be made.
+
+### Sourced boolean
+
+Use this object for `guidance_practices.provides_guidance`:
+
+```json
+{
+  "value": true,
+  "basis": "reported_fact",
+  "source_ids": ["SRC-002"],
+  "source_locators": {
+    "SRC-002": "Fiscal 2026 Guidance"
+  }
+}
+```
+
+When unresolved, use `value: null`, `basis: "unknown"`, and `source_ids: []`.
+
+### Grouped scalar provenance
+
+`company_identity.field_provenance` and `reporting_context.field_provenance` map each non-null externally verifiable scalar field to its basis and evidence:
+
+```json
+{
+  "legal_name": {
+    "basis": "reported_fact",
+    "source_ids": ["SRC-001"],
+    "source_locators": {
+      "SRC-001": "Cover page"
+    }
+  },
+  "industry": {
+    "basis": "model_judgment",
+    "rationale": "The company's principal activities align most closely with this industry classification.",
+    "source_ids": ["SRC-001"]
+  }
+}
+```
+
+Do not add entries for null fields, input-derived metadata, `company_description`, or array items that carry their own provenance. Every non-null externally verifiable scalar must have exactly one same-named `field_provenance` entry. Apply the normal conditional basis rules inside each entry. Every locator source ID must appear in that entry's `source_ids`.
 
 ### Target metric input
 
@@ -514,18 +700,26 @@ Return all of these top-level keys in this order:
 {
   "name": "Product or service category",
   "description": "Concise description",
-  "importance": "primary"
+  "basis": "reported_fact",
+  "importance": "primary",
+  "importance_basis": "model_judgment",
+  "importance_rationale": "This category is central to the company's stated offering and revenue model.",
+  "source_ids": ["SRC-001"]
 }
 ```
 
 Allowed `importance`: `primary`, `secondary`, `emerging`, `unknown`.
+
+`basis` applies to the name and description. `importance_basis` applies only to the relative importance classification and normally is `model_judgment`; include `importance_rationale` for that judgment.
 
 ### Customer group
 
 ```json
 {
   "name": "Customer group",
-  "description": "Who buys and why"
+  "description": "Who buys and why",
+  "basis": "reported_fact",
+  "source_ids": ["SRC-001"]
 }
 ```
 
@@ -535,7 +729,11 @@ Allowed `importance`: `primary`, `secondary`, `emerging`, `unknown`.
 {
   "name": "Reported segment",
   "description": "What the segment contains",
-  "materiality": "primary"
+  "basis": "reported_fact",
+  "materiality": "primary",
+  "materiality_basis": "model_judgment",
+  "materiality_rationale": "The segment is a principal reported component of the company.",
+  "source_ids": ["SRC-001"]
 }
 ```
 
@@ -545,18 +743,27 @@ Allowed `importance`: `primary`, `secondary`, `emerging`, `unknown`.
 {
   "name": "Region",
   "role": "Major market or operating region",
-  "materiality": "primary"
+  "basis": "reported_fact",
+  "materiality": "primary",
+  "materiality_basis": "model_judgment",
+  "materiality_rationale": "The region is a principal market or operating area in the reviewed disclosures.",
+  "source_ids": ["SRC-001"]
 }
 ```
 
-Allowed `materiality`: `high`, `moderate`, `low`, `primary`, `secondary`, `unknown` as appropriate to the object. Use one consistent vocabulary within each array.
+Allowed `materiality`: `high`, `moderate`, `low`, `primary`, `secondary`, `unknown` as appropriate to the object. Use one consistent vocabulary within each array. `basis` applies to the reported name and description or role; `materiality_basis` and `materiality_rationale` identify the separate model judgment.
 
 ### Company-defined term
 
 ```json
 {
   "term": "Comparable sales",
-  "definition": "Company definition where available"
+  "definition": "Company definition where available",
+  "basis": "reported_fact",
+  "source_ids": ["SRC-001"],
+  "source_locators": {
+    "SRC-001": "Defined terms"
+  }
 }
 ```
 
@@ -567,7 +774,12 @@ Allowed `materiality`: `high`, `moderate`, `low`, `primary`, `secondary`, `unkno
   "category": "macroeconomic",
   "exposure": "Housing-market activity",
   "description": "How and why the company is exposed",
-  "materiality": "high"
+  "basis": "model_judgment",
+  "rationale": "The cited sources identify housing activity as a demand influence for the company's principal offerings.",
+  "materiality": "high",
+  "materiality_basis": "model_judgment",
+  "materiality_rationale": "The exposure affects a broad portion of company demand.",
+  "source_ids": ["SRC-001", "SRC-003"]
 }
 ```
 
@@ -575,13 +787,20 @@ Preferred `category`: `industry`, `macroeconomic`, `political`, `geographic`, `r
 
 Allowed `materiality`: `high`, `moderate`, `low`, `unknown`.
 
+`basis` applies to the stated exposure relationship. Use `reported_fact` only when the source directly makes that relationship; use `model_judgment` with `rationale` when the profile synthesizes it. Materiality is a separate assessment and requires `materiality_basis` and a concise `materiality_rationale`.
+
 ### Metric lens
 
 ```json
 {
   "input_metric": "Segment operating profit",
-  "specificity": "high",
-  "specificity_reason": "The metric is restricted to a named operating segment.",
+  "specificity": {
+    "classification": "high",
+    "basis": "model_judgment",
+    "rationale": "The metric is restricted to a named operating segment.",
+    "source_ids": [],
+    "input_fields": ["target_metrics[0].label"]
+  },
   "company_definition": null,
   "scope": "Named operating segment",
   "accounting_basis": null,
@@ -589,11 +808,23 @@ Allowed `materiality`: `high`, `moderate`, `low`, `unknown`.
   "reporting_frequency": "quarterly",
   "relevant_business_areas": [],
   "additional_profile_emphasis": [],
-  "unresolved_questions": []
+  "unresolved_questions": [],
+  "field_provenance": {
+    "scope": {
+      "basis": "reported_fact",
+      "source_ids": ["SRC-001"]
+    },
+    "reporting_frequency": {
+      "basis": "reported_fact",
+      "source_ids": ["SRC-001"]
+    }
+  }
 }
 ```
 
-Allowed `specificity`: `generic`, `moderate`, `high`.
+Allowed `specificity.classification`: `generic`, `moderate`, `high`.
+
+Metric specificity is a sourced-assessment object. When its classification follows solely from the caller's label, use `source_ids: []` and identify the label in `input_fields`; when company-specific scope or definitions influence the classification, add those source IDs. Use `field_provenance` for each non-null company-defined or externally verified scalar. Do not cite `input_metric` or `units` when they merely reproduce caller input. `relevant_business_areas`, `additional_profile_emphasis`, and `unresolved_questions` contain sourced-claim objects with basis and provenance when non-empty.
 
 A generic supplied metric may be omitted from `metric_lenses` when no additional company-specific context is necessary; it must still appear in `profile_metadata.target_metrics_supplied`.
 
@@ -605,11 +836,14 @@ A generic supplied metric may be omitted from `metric_lenses` when no additional
   "category": "operating_model",
   "description": "What makes the concept distinctive",
   "potential_relevance": "Why a later signal worker may need to understand it",
-  "materiality": "high"
+  "materiality": "high",
+  "basis": "model_judgment",
+  "rationale": "The cited operating facts support treating this concept as distinctive and potentially relevant.",
+  "source_ids": ["SRC-001", "SRC-003"]
 }
 ```
 
-Keep `category` flexible. Allowed `materiality`: `high`, `moderate`, `low`, `unknown`.
+Keep `category` flexible. Allowed `materiality`: `high`, `moderate`, `low`, `unknown`. The description, potential relevance, and materiality are normally a combined `model_judgment`; `rationale` must explain the inference from the cited sources.
 
 `potential_relevance` must remain a broad explanatory relationship. It must not nominate, score, or quantify a forecast signal.
 
@@ -638,7 +872,9 @@ Requirements:
 - include only inspected sources;
 - use a repository-relative path for corpus sources;
 - use the reviewed page URL for public sources;
-- use `used_for` to name the top-level sections supported;
+- use `used_for` to name the top-level sections supported, while treating it only as a coarse source inventory;
+- require every claim-level and field-level source ID to resolve to exactly one source-log entry;
+- omit inspected sources that support no retained claim, field, conflict, or material gap;
 - do not list duplicate copies of the same disclosure unless they materially differ.
 
 ### Uncertainty or gap
@@ -648,11 +884,41 @@ Requirements:
   "topic": "Geographic revenue definition",
   "issue": "The reviewed sources do not establish whether geography is based on billing location or end demand.",
   "importance": "moderate",
+  "source_ids": ["SRC-001"],
+  "conflicting_claims": [],
   "suggested_follow_up": "Check geographic footnotes if this becomes relevant to a selected signal."
 }
 ```
 
 Allowed `importance`: `high`, `moderate`, `low`.
+
+For a missing disclosure, `source_ids` identifies the most relevant inspected sources whose coverage was insufficient; it does not claim that a source explicitly states the absence. For a conflict, populate `conflicting_claims` with separate sourced-claim objects so each reading retains its own source IDs and optional locators. Never merge conflicting counts, dates, definitions, scopes, or reporting bases into one unsupported value.
+
+Conflict example:
+
+```json
+{
+  "topic": "Current location count",
+  "issue": "The reviewed current sources use different scopes or dates that cannot be reconciled precisely.",
+  "importance": "moderate",
+  "source_ids": ["SRC-002", "SRC-003"],
+  "conflicting_claims": [
+    {
+      "statement": "The company reported more than 1,280 locations at quarter-end.",
+      "basis": "reported_fact",
+      "source_ids": ["SRC-002"]
+    },
+    {
+      "statement": "Management later described more than 1,300 branches following a recent acquisition.",
+      "basis": "reported_fact",
+      "source_ids": ["SRC-003"]
+    }
+  ],
+  "suggested_follow_up": "Reconcile the count only if a later task requires a same-date operating footprint."
+}
+```
+
+When sources identify operating lines or concepts but do not disclose their standalone economics, record the disclosure limitation as a gap. Do not convert the absence of line-level financial visibility into a model-derived factual description.
 
 ### Error
 
@@ -675,11 +941,15 @@ Allowed `importance`: `high`, `moderate`, `low`.
 - Preserve company-defined terminology rather than replacing it with generic financial language.
 - Distinguish geography by customer location, billing location, destination, or operations when the source does so.
 - Distinguish reported and adjusted measures.
+- Keep provenance compact: use source IDs in claims and retain titles, paths, URLs, dates, and publication metadata only in `sources`.
+- Add locators to precise figures, definitions, calculations, disputed claims, and long sources when a stable locator materially improves verification; do not add decorative locators to every claim.
+- Do not repeat a reported fact inside a model-judgment rationale. Explain only the inference needed to distinguish the judgment from its cited evidence.
+- Provenance overhead does not justify exceeding the lightweight output budget. Retain fewer material claims rather than deleting basis labels or claim-level source IDs.
 - Do not infer the absence of an exposure merely because selected sources do not discuss it.
 
 ## Stop conditions
 
-Stop researching when:
+Stop normal research when all applicable conditions below are satisfied:
 
 - identity and cutoff are resolved;
 - business model and revenue model are understandable;
@@ -693,9 +963,10 @@ Stop researching when:
 - supplied metrics have received proportional treatment;
 - sources are logged;
 - material unresolved questions are recorded;
+- every Step 4 coverage row is `supported`, `not_materially_applicable`, or `gap_recorded`;
 - further research would mainly add detail rather than alter the profile's usefulness.
 
-Do not continue merely because research budget remains.
+Stop as soon as these conditions are satisfied; do not continue merely because research budget remains. Independently, the 72,000-character limit is a mandatory stop even when a coverage row remains unresolved; record the unresolved material issue in `uncertainties_and_gaps` and proceed to profile construction.
 
 ## Final verification checklist
 
@@ -715,6 +986,14 @@ Before returning the output, verify:
 - [ ] No more than three core and one optional repository document were used without an explicit exception.
 - [ ] Public research was used only for a material gap and stayed within the two-source limit.
 - [ ] Every source-log entry was actually inspected and used.
+- [ ] Exact source paths were selected before substantive extraction.
+- [ ] Large documents were searched before any broader section was opened.
+- [ ] Search results were bounded to one or two retained matches of approximately 1,000–1,500 characters per topic.
+- [ ] Overlapping excerpts were deduplicated and cumulative unique extracted characters were tracked.
+- [ ] No more than two broad follow-up section reads were used.
+- [ ] Unique extracted source text stayed within the 72,000-character hard stop.
+- [ ] No extraction command created repository notes, indexes, caches, or bytecode artifacts.
+- [ ] Every coverage-matrix row was resolved or recorded as a gap before drafting.
 
 ### Profile quality
 
@@ -725,6 +1004,20 @@ Before returning the output, verify:
 - [ ] Company-defined terms are preserved.
 - [ ] Unknown or conflicting information is explicit.
 - [ ] No unsupported precise claim, figure, or market-share statement was added.
+
+### Basis and claim-level provenance
+
+- [ ] Every non-null narrative claim and classification declares an allowed `basis`.
+- [ ] Every `reported_fact` has one to three direct source IDs.
+- [ ] Every `calculated` claim has source IDs and a rationale with inputs and arithmetic.
+- [ ] Every `model_judgment` has a rationale and either source IDs or, when based solely on caller input, explicit `input_fields`; no judgment is attributed to management unless management stated it.
+- [ ] Every `assumption` is explicit, has a rationale, and is not filling a missing company fact.
+- [ ] Every material `unknown` is null and recorded as a gap rather than inferred.
+- [ ] Every non-null externally verifiable identity, reporting, and metric-lens scalar has a same-named `field_provenance` entry with an allowed basis and valid evidence.
+- [ ] Every claim-level and field-level source ID resolves to exactly one unique `sources` entry.
+- [ ] Every locator key is present in its claim's or field's source-ID list.
+- [ ] Every material conflict preserves each reported reading with its own source IDs.
+- [ ] Source-log `used_for` was not treated as a substitute for claim-level provenance.
 
 ### Metric proportionality
 
@@ -737,7 +1030,7 @@ Before returning the output, verify:
 
 - [ ] Output is valid JSON.
 - [ ] All required top-level keys are present in the required order.
-- [ ] `schema_version` is `0.1.0`.
+- [ ] `schema_version` is `0.2.0`.
 - [ ] `status` is `complete`, `partial`, or `error`.
 - [ ] Unknown scalar values are `null`, not fabricated text.
 - [ ] Unsupported arrays are empty rather than padded.
