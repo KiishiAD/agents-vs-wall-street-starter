@@ -117,6 +117,29 @@ class SignalObservation:
     provenance: EvidenceProvenance
     evidence_quality: str
     freshness: str
+    calculation: str
+
+
+@dataclass(frozen=True)
+class ObservationDecision:
+    observation: SignalObservation
+    accepted: bool
+    reason_code: str
+    explanation: str
+
+
+@dataclass(frozen=True)
+class ForecastResult:
+    metric_id: str
+    period: str
+    units: str
+    anchor_range: NumericRange
+    driver_adjustment: Decimal
+    base_range: NumericRange
+    base_forecast: Decimal
+    formula: str
+    accepted: tuple[ObservationDecision, ...]
+    rejected: tuple[ObservationDecision, ...]
 
 
 @dataclass(frozen=True)

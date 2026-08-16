@@ -109,4 +109,54 @@ def resolve_management_guidance(
         provenance=provenance,
         evidence_quality=evidence_quality,
         freshness=freshness,
+        calculation=f"range({low_value}, {high_value})",
+    )
+
+
+def resolve_explicit_driver(
+    profile: CompanyProfile,
+    *,
+    signal_id: str,
+    source_id: str,
+    exact_quote: str,
+    locator: str,
+    adjustment: str | int | Decimal,
+    units: str,
+    period: str,
+    calculation: str,
+    evidence_quality: str = "high",
+    freshness: str = "current",
+) -> SignalObservation:
+    signal = profile.signals.get(signal_id)
+    if signal is None:
+        raise ObservationValidationError(f"unknown signal {signal_id}")
+    if signal.role is not SignalRole.DRIVER:
+        raise ObservationValidationError(f"signal {signal_id} is not a quantitative driver")
+    if signal.resolver != "resolve_explicit_driver":
+        raise ObservationValidationError(f"signal {signal_id} does not use explicit-driver resolver")
+    if signal.combination_method != "additive_adjustment":
+        raise ObservationValidationError(f"signal {signal_id} does not define an additive adjustment")
+    if period != signal.target_period:
+        raise ObservationValidationError("observation period does not match signal target period")
+    if units != signal.units:
+        raise ObservationValidationError("observation units do not match signal units")
+    if not calculation.strip():
+        raise ObservationValidationError("driver calculation is required")
+    source = profile.sources.get(source_id)
+    if source is None:
+        raise ObservationValidationError(f"unknown source {source_id}")
+    value = _decimal(adjustment, "adjustment")
+    provenance = _verified_provenance(source, exact_quote=exact_quote, locator=locator)
+    return SignalObservation(
+        signal_id=signal.signal_id,
+        target_metric_id=signal.target_metric_id,
+        role=signal.role,
+        period=period,
+        units=units,
+        effect_kind=EffectKind.ADDITIVE,
+        value=value,
+        provenance=provenance,
+        evidence_quality=evidence_quality,
+        freshness=freshness,
+        calculation=calculation.strip(),
     )
