@@ -123,9 +123,9 @@ disclosure used elsewhere in this project, and is an analytical judgement, not a
 
 The two that matter most:
 
-- **Davenport Works (CF, Iowa)** — a top-five US site that absorbed 299 + 80 + 80 production
-  layoffs across 2024–25 and 115 recalls across 2026, and for which no public total headcount
-  exists. Every Davenport event is therefore unsizable against its own base.
+- **Davenport Works (CF, Iowa)** — a top-five US site that absorbed 291 WARN-recorded layoffs
+  across 2024–25 and 115 recalls across 2026, and for which no public total headcount exists.
+  Every Davenport event is therefore unsizable against its own base.
 - **The Wirtgen road-building plants** (Windhagen, Göppingen, Ludwigshafen, Tirschenreuth,
   Wittlich, Langfang, Porto Alegre). Wirtgen Group publishes a single ~8,900 worldwide figure
   and never a per-plant one. These plants drive the CF/Western Europe growth that the Q2 FY2026
@@ -256,16 +256,25 @@ acquisition (~8,200 people), not a production signal. The UAW series also gains 
 Sites with at least one dated 2024–2026 labour event, which is the set the tracker actually
 watches. Everything else in the table above is structural context.
 
-| Plant | Segment | 2024–25 layoffs (WARN/news) | 2026 recalls + new hires | Net |
-|---|---|---:|---:|---:|
-| John Deere Waterloo Works / Engine Works / Foundry / Drivetrain | PPA;CF | 1,247 | 146 | -1,101 |
-| John Deere Harvester Works | PPA | 840 | 0 | -840 |
-| John Deere Davenport Works | CF | 291 | 115 | -176 |
-| John Deere Des Moines Works | PPA | 325 | 0 | -325 |
-| John Deere Seeding Group / Cylinder Works (Moline) | PPA | 272 | 0 | -272 |
-| John Deere Dubuque Works | CF | 133 | 102 | -31 |
-| John Deere Ottumwa Works | SAT | 75 | 0 | -75 |
-| John Deere Coffeyville Works (Funk Manufacturing) | CF;PPA | 0 | 8 | +8 |
+Layoffs are bucketed by **effective date**, recalls and new hires by announcement date.
+
+| Plant | Segment | pre-2024 layoffs | 2024–25 layoffs | 2026 recalls + new hires | 2024→2026 net |
+|---|---|---:|---:|---:|---:|
+| John Deere Waterloo Works / Engine Works / Foundry / Drivetrain | PPA;CF | — | 1,247 | 146 | -1,101 |
+| John Deere Harvester Works | PPA | 425 | 415 | 0 | -415 |
+| John Deere Davenport Works | CF | — | 291 | 115 | -176 |
+| John Deere Des Moines Works | PPA | — | 325 | 0 | -325 |
+| John Deere Dubuque Works | CF | — | 133 | 102 | -31 |
+| John Deere Ottumwa Works | SAT | — | 75 | 0 | -75 |
+| John Deere Seeding Group / Cylinder Works (Moline) | PPA | 220 | 52 | 0 | -52 |
+| John Deere Coffeyville Works (Funk Manufacturing) | CF;PPA | — | 0 | 8 | +8 |
+
+The pre-2024 column holds only the two events the archives reach: **425 at Harvester Works**
+(notice 2014-08-20, effective 2014-10-20, permanent, UAW Local 865 — the largest single Deere
+WARN event in the entire 1999–2026 Illinois archive) and **220 at Moline Seeding & Cylinder**
+(Deere press release 2015-11-30, no corresponding Illinois WARN record). Iowa's WARN database
+does not start until 2021-08-18, so pre-2021 Iowa is invisible and those columns are not
+comparable across plants.
 
 Salaried, corporate and financial-services WARN rows (World Headquarters 298, Intelligent
 Solutions Group 59, John Deere Financial 67) are **excluded** — they are headcount, not build
@@ -273,9 +282,10 @@ rate. So is the 2018 Eurest Services notice (79 food-service contractors at thre
 Cities sites), which is not Deere payroll at all.
 
 Note what is **absent** from that table: Harvester Works in East Moline — the sole North
-American combine plant and the core of PPA — took 300 + 21 + 115 cuts across 2024–25 and
-received **nothing** in 2026. Read alongside PPA guidance of −5% to −10%, that silence is the
-single most informative row in the whole footprint.
+American combine plant and the core of PPA — took 415 cuts across 2024–25 (279 + 21 by WARN,
+plus a 115-worker action in August 2025 that fell below the Illinois WARN threshold and was
+never filed) and received **nothing** in 2026. Read alongside PPA guidance of −5% to −10%,
+that silence is the single most informative row in the whole footprint.
 
 ---
 

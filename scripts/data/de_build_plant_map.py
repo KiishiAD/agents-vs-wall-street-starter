@@ -126,8 +126,9 @@ def main():
         "Kernersville excavator factory": "kernersville",
         "Ramos Arizpe plant": "ramos-arizpe",
     }
-    ev_lay = defaultdict(int)
-    ev_rec = defaultdict(int)
+    ev_lay = defaultdict(int)      # layoffs with an effective date in 2024-2025
+    ev_rec = defaultdict(int)      # recalls + new hires announced in 2026
+    ev_old = defaultdict(int)      # pre-2024 layoffs, kept separate
     for r in warn:
         if r["series_id"].endswith("_fq"):
             continue
@@ -139,7 +140,8 @@ def main():
         except ValueError:
             continue
         if r["metric"] == "employees_affected":
-            ev_lay[slug] += v
+            eff = kv(r["notes"], "effective_date") or r["date"]
+            (ev_lay if eff >= "2024-01-01" else ev_old)[slug] += v
         elif r["metric"] in ("employees_recalled", "employees_hired_new"):
             ev_rec[slug] += v
     for r in prod:
@@ -247,9 +249,9 @@ def main():
     A("")
     A("The two that matter most:")
     A("")
-    A("- **Davenport Works (CF, Iowa)** — a top-five US site that absorbed 299 + 80 + 80 production")
-    A("  layoffs across 2024–25 and 115 recalls across 2026, and for which no public total headcount")
-    A("  exists. Every Davenport event is therefore unsizable against its own base.")
+    A("- **Davenport Works (CF, Iowa)** — a top-five US site that absorbed 291 WARN-recorded layoffs")
+    A("  across 2024–25 and 115 recalls across 2026, and for which no public total headcount exists.")
+    A("  Every Davenport event is therefore unsizable against its own base.")
     A("- **The Wirtgen road-building plants** (Windhagen, Göppingen, Ludwigshafen, Tirschenreuth,")
     A("  Wittlich, Langfang, Porto Alegre). Wirtgen Group publishes a single ~8,900 worldwide figure")
     A("  and never a per-plant one. These plants drive the CF/Western Europe growth that the Q2 FY2026")
@@ -408,13 +410,24 @@ def main():
     A("Sites with at least one dated 2024–2026 labour event, which is the set the tracker actually")
     A("watches. Everything else in the table above is structural context.")
     A("")
-    A("| Plant | Segment | 2024–25 layoffs (WARN/news) | 2026 recalls + new hires | Net |")
-    A("|---|---|---:|---:|---:|")
-    for slug in sorted(set(list(ev_lay) + list(ev_rec)), key=lambda k: -(ev_lay[k] + ev_rec[k])):
+    A("Layoffs are bucketed by **effective date**, recalls and new hires by announcement date.")
+    A("")
+    A("| Plant | Segment | pre-2024 layoffs | 2024–25 layoffs | 2026 recalls + new hires | 2024→2026 net |")
+    A("|---|---|---:|---:|---:|---:|")
+    allslugs = set(list(ev_lay) + list(ev_rec) + list(ev_old))
+    for slug in sorted(allslugs, key=lambda k: -(ev_lay[k] + ev_rec[k])):
         s = sites.get(slug)
         nm = s["name"] if s else slug
-        A(f"| {nm} | {s['segment'] if s else '?'} | {ev_lay[slug]:,.0f} | {ev_rec[slug]:,.0f} | "
-          f"{ev_rec[slug]-ev_lay[slug]:+,.0f} |")
+        old = f"{ev_old[slug]:,.0f}" if ev_old[slug] else "—"
+        A(f"| {nm} | {s['segment'] if s else '?'} | {old} | {ev_lay[slug]:,.0f} | "
+          f"{ev_rec[slug]:,.0f} | {ev_rec[slug]-ev_lay[slug]:+,.0f} |")
+    A("")
+    A("The pre-2024 column holds only the two events the archives reach: **425 at Harvester Works**")
+    A("(notice 2014-08-20, effective 2014-10-20, permanent, UAW Local 865 — the largest single Deere")
+    A("WARN event in the entire 1999–2026 Illinois archive) and **220 at Moline Seeding & Cylinder**")
+    A("(Deere press release 2015-11-30, no corresponding Illinois WARN record). Iowa's WARN database")
+    A("does not start until 2021-08-18, so pre-2021 Iowa is invisible and those columns are not")
+    A("comparable across plants.")
     A("")
     A("Salaried, corporate and financial-services WARN rows (World Headquarters 298, Intelligent")
     A("Solutions Group 59, John Deere Financial 67) are **excluded** — they are headcount, not build")
@@ -422,9 +435,10 @@ def main():
     A("Cities sites), which is not Deere payroll at all.")
     A("")
     A("Note what is **absent** from that table: Harvester Works in East Moline — the sole North")
-    A("American combine plant and the core of PPA — took 300 + 21 + 115 cuts across 2024–25 and")
-    A("received **nothing** in 2026. Read alongside PPA guidance of −5% to −10%, that silence is the")
-    A("single most informative row in the whole footprint.")
+    A("American combine plant and the core of PPA — took 415 cuts across 2024–25 (279 + 21 by WARN,")
+    A("plus a 115-worker action in August 2025 that fell below the Illinois WARN threshold and was")
+    A("never filed) and received **nothing** in 2026. Read alongside PPA guidance of −5% to −10%,")
+    A("that silence is the single most informative row in the whole footprint.")
     A("")
     A("---")
     A("")

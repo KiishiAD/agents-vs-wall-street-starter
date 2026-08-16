@@ -277,11 +277,11 @@
           <div class="label">Worldwide net sales and revenues</div>
           <div class="unit">USD millions</div>
         </div>
-        <div class="central">12,350</div>
-        <div class="yoy up">▲ +2.8% vs Q3 FY2025 ($12,018m)</div>
+        <div class="central">12,400</div>
+        <div class="yoy up">▲ +3.2% vs Q3 FY2025 ($12,018m)</div>
         <div class="range">
           <span><i>Low</i>12,150</span>
-          <span><i>Central</i>12,350</span>
+          <span><i>Central</i>12,400</span>
           <span><i>High</i>12,600</span>
         </div>
       </div>
@@ -384,7 +384,7 @@
           <tr><td>Regional bottom-up — matrix model</td><td class="n">~12,440</td><td class="n">—</td><td class="wrap-ok">The same 24 cells built independently from the extracted matrix and its own driver set</td></tr>
           <tr><td>Guidance-implied</td><td class="n">12,359</td><td class="n">11,637 – 13,168</td><td class="wrap-ok">FY guides less H1 actual, H2 split on Q3-share medians adjusted for management's cadence language</td></tr>
           <tr><td>Simple seasonality</td><td class="n">12,589</td><td class="n">11,541 – 14,101</td><td class="wrap-ok">Median Q2→Q3 sequential ratio of 0.942 applied to Q2 actual</td></tr>
-          <tr class="total"><td>Adopted central</td><td class="n">12,350</td><td class="n">12,150 – 12,600</td><td class="wrap-ok">Bottom-up preferred; band compressed by the dealer-channel evidence</td></tr>
+          <tr class="total"><td>Adopted central</td><td class="n">12,400</td><td class="n">12,150 – 12,600</td><td class="wrap-ok">Mean of the two independent cell-level builds; band compressed by the dealer and plant-labour evidence, both of which exclude the low end</td></tr>
         </tbody>
         <caption>USD millions. Spread between the three centrals is 230m, or 1.9%.</caption>
       </table>
@@ -715,6 +715,43 @@
 
     <div class="callout warn">
       <p><strong>The caveat that matters most for FY2026.</strong> Revenue predictability degrades 1.6–1.8× at cycle turning points, and management has called FY2026 the bottom of the large-ag cycle. The assumption is weakest exactly where we are relying on it — which is why the revenue band here sits near 1-sigma rather than inside it.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="rule"></div>
+      <span class="eyebrow">Rejected indicator</span>
+      <h2>Plant hiring does not predict shipments</h2>
+    </div>
+    <div class="col body-copy">
+      <p>We mapped Deere's plants and built a layoff and recall tracker from WARN filings, on the theory that headcount is an observable proxy for production rate. Tested properly, it fails as a predictor — and we are reporting that rather than quietly using it.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Predicting next-quarter revenue</th><th class="n">PPA</th><th class="n">SAT</th><th class="n">C&amp;F</th></tr></thead>
+        <tbody>
+          <tr class="total"><td>Naive persistence — revenue predicting itself</td><td class="n">+0.61</td><td class="n">+0.84</td><td class="n">+0.81</td></tr>
+          <tr><td>Plant labour signal</td><td class="n">+0.52</td><td class="n">+0.45</td><td class="n">+0.57</td></tr>
+          <tr><td>Labour → <em>acceleration</em> in revenue</td><td class="n">+0.001</td><td class="n">−0.003</td><td class="n">+0.35</td></tr>
+          <tr><td>Directional hit rate on acceleration</td><td class="n">38%</td><td class="n">25%</td><td class="n">38%</td></tr>
+        </tbody>
+        <caption>n=8–9. The labour signal loses to doing nothing in all three segments. With this sample the honest reading is "no detectable directional skill", not "inverted".</caption>
+      </table>
+    </div>
+    <div class="callout warn">
+      <p><strong>The trap it avoided.</strong> An annual test shows r = +0.891 between UAW headcount change and equipment sales change — a compelling-looking result. Both sides are the <em>same fiscal year</em>. It is coincident by construction and says nothing about lead time. Two of three tests looked supportive and were worthless; only benchmarking against naive persistence exposed it.</p>
+    </div>
+    <div class="callout">
+      <p><strong>What survived.</strong> An asymmetry worth keeping: in down years headcount falls slightly more than sales (−3.8pp gap), while in up years it badly understates growth (−9.4pp). So a layoff number can be scaled into revenue; a hiring number cannot. And composition beats count — FY2025 Q4 saw 339 layoffs in the very quarter all three segments turned positive, but those 339 were entirely PPA, and two quarters later PPA printed −13.9% against C&amp;F at +28.6%.</p>
+      <p>A data-handling correction also came out of it: naively summing the WARN file overstates production cuts roughly threefold. FY2024 Q3 is 303 production workers, not 895, once salaried, corporate and contractor rows are removed.</p>
+    </div>
+    <div class="callout">
+      <p><strong>As a nowcast, it still earns its place.</strong> Because the quarter is closed, coincident is sufficient. There were <strong>zero Deere WARN notices in Iowa, Illinois or Wisconsin in all of calendar 2026</strong> — a hard zero, not a data gap: the Iowa database is current to 13 August and carries 77 other CY2026 notices. On 11 June Dubuque hired 30 new external employees after exhausting its recall list, with 400 US employees returned or hired since January. The scenario behind the FY2024–25 negative surprises was Deere cutting into a quarter; that did not happen. It removes the downside tail without arguing for upside.</p>
+      <p>Segment split: C&amp;F corroborated — every 2026 event is Dubuque, Davenport or Coffeyville. PPA mixed — 146 recalled to the Waterloo 8R lines, but <strong>Harvester Works, the only North American combine plant, received nothing in 2026</strong> after 415 cuts. SAT silent, which is no information rather than support.</p>
+    </div>
+    <div class="callout warn">
+      <p><strong>The gap we could not close.</strong> Summer shutdown weeks are negotiated into the UAW master agreement and never publicly disclosed, so the shutdown comparison could not be built and was not estimated. There is a calendar subtlety on top: FY2025 Q3 ended 27 July while FY2026 Q3 ended 2 August, so a shutdown falling outside last year's window could fall inside this year's. This is the largest unquantified risk in the revenue forecast.</p>
     </div>
   </section>
 

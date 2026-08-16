@@ -174,6 +174,12 @@ def load_labour_events(fq):
         if seg.startswith("EXCLUDE") or seg == "AGG":
             excluded.append((r["date"], plant, r["metric"], r["value"]))
             continue
+        # Some WARN rows at production sites are explicitly salaried reduction waves
+        # (Waterloo 49 and 69 in 2024, Des Moines 16, Dubuque 34). They are headcount,
+        # not build rate, and are excluded from every production aggregate.
+        if re.search(r"\bsalaried\b", notes or "", re.I):
+            excluded.append((r["date"], plant + " (salaried)", r["metric"], r["value"]))
+            continue
         metric, val = r["metric"], r["value"]
         if metric == "employees_affected":
             m = re.search(r"effective_date=(\d{4}-\d{2}-\d{2})", notes)

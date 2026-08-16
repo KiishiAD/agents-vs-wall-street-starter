@@ -87,18 +87,24 @@ nothing about lead time.
 ## 2. TEST 2 — quarterly: do layoff and recall events lead reported segment revenue?
 
 Layoffs bucketed by **effective date** (when capacity actually leaves the plant), recalls and new
-hires by **announcement date**. Salaried, corporate and financial-services WARN rows are excluded
-— World Headquarters 298, Intelligent Solutions Group 59, John Deere Financial 67 — because they
-are headcount, not build rate. So is the 2018 Eurest Services notice (79 food-service contractors
-at Deere Quad Cities sites), which is not Deere payroll. **This is why the quarterly layoff totals
-below are lower than a naive sum over `warn_layoffs.csv`:** FY2024 Q3 is 471 production workers
-here versus 895 in the raw file, and the entire 424 difference is salaried and corporate.
+hires by **announcement date**.
+
+**Non-production rows are excluded**, because they are headcount and not build rate: World
+Headquarters 298, Intelligent Solutions Group 59, John Deere Financial 67, the 2018 Eurest
+Services notice (79 food-service contractors at Deere Quad Cities sites, not Deere payroll), and
+— easily missed — **four WARN rows at production sites that the notes explicitly flag as salaried
+reduction waves**: Waterloo 49 and 69, Des Moines 16, Dubuque 34, all in mid-2024.
+
+**This is why the quarterly totals below are lower than a naive sum over `warn_layoffs.csv`.**
+FY2024 Q3 is **303 production workers here versus 895 in the raw file**; the entire 592 difference
+is salaried, corporate, financial-services or contractor. Anyone summing that CSV without the
+filter will overstate the 2024 production cut by roughly a factor of three in that quarter.
 
 | Fiscal Q | Layoffs effective | Recalls/hires announced | Net | PPA y/y | SAT y/y | CF y/y |
 |---|---:|---:|---:|---:|---:|---:|
 | FY2024 Q1 | 0 | 0 | 0 | −6.7% | −19.2% | +0.3% |
 | FY2024 Q2 | 368 | 0 | −368 | −15.9% | −23.2% | −6.5% |
-| FY2024 Q3 | 471 | 0 | −471 | −25.1% | −18.3% | −13.5% |
+| FY2024 Q3 | 303 | 0 | −303 | −25.1% | −18.3% | −13.5% |
 | FY2024 Q4 | 934 | 0 | −934 | **−38.2%** | −25.5% | −28.8% |
 | FY2025 Q1 | 192 | 0 | −192 | −36.7% | **−27.9%** | **−37.9%** |
 | FY2025 Q2 | 122 | 0 | −122 | −20.5% | −6.0% | −23.3% |
@@ -114,9 +120,9 @@ Segment-matched (only that segment's own plants contribute to its labour delta):
 
 | Segment | lag 0Q | lag +1Q | lag +2Q |
 |---|---|---|---|
-| PPA | r = +0.33 (n=10) | r = +0.56 (n=9) | r = +0.54 (n=8) |
+| PPA | r = +0.31 (n=10) | r = +0.49 (n=9) | r = +0.46 (n=8) |
 | SAT | r = −0.03 (n=10) | r = −0.10 (n=9) | r = −0.22 (n=8) |
-| CF | r = +0.68 (n=10) | r = +0.69 (n=9) | r = +0.37 (n=8) |
+| CF | r = +0.67 (n=10) | r = +0.65 (n=9) | r = +0.31 (n=8) |
 
 Read naively, CF looks good. **Do not read it naively.** Every one of these series moves
 monotonically through a single V-shaped cycle — labour deltas are negative for eight straight
@@ -131,16 +137,16 @@ predicting itself**.
 
 | Segment | persistence: revYoY(t) → revYoY(t+1) | labour(t) → revYoY(t+1) | labour(t) → *acceleration* in revYoY |
 |---|---|---|---|
-| PPA | **r = +0.61** | r = +0.59 | r = **+0.06** |
-| SAT | **r = +0.84** | r = +0.51 | r = **+0.07** |
-| CF | **r = +0.81** | r = +0.62 | r = +0.42 |
+| PPA | **r = +0.61** | r = +0.52 | r = **+0.00** |
+| SAT | **r = +0.84** | r = +0.45 | r = **−0.00** |
+| CF | **r = +0.81** | r = +0.57 | r = +0.35 |
 
 All n = 9.
 
 **The labour signal loses to persistence in all three segments.** And on the only form of the
 question that matters for a forecast — does labour tell you whether revenue growth is about to
-*accelerate or decelerate* relative to where it already is — the correlation collapses to
-approximately zero for PPA and SAT.
+*accelerate or decelerate* relative to where it already is — the correlation is **+0.001 for PPA
+and −0.003 for SAT**. Not "small". Zero.
 
 Directional hit rate, sign of net labour delta vs sign of next-quarter revenue-YoY acceleration:
 
@@ -161,8 +167,8 @@ quarter all three segments turned positive year-on-year (PPA +10.1%, CF +27.0%, 
 tracker reading total headcount would have called that quarter a continued decline.
 
 **But the plant list was right.** Those 339 were Harvester Works 115 (combines), Moline Seeding 52
-(planters), Waterloo Foundry 71, Des Moines 40, Waterloo 101 — **entirely PPA, and specifically the
-crop-harvesting and seeding end of PPA.** Nothing was cut at Dubuque or Davenport. Two quarters
+(planters), Waterloo Foundry 71 and Waterloo 101 — **entirely PPA, and concentrated in the
+crop-harvesting and seeding end of it.** Nothing was cut at Dubuque or Davenport. Two quarters
 later PPA printed −13.9% while CF printed +28.6%. The composition of the cut called the segment
 divergence correctly when the total called it wrong.
 
@@ -179,6 +185,11 @@ episodes, not a fitted relationship, and it is stated as such.
   (33% of site workforce, or 250+) is so high that Deere's real August-2025 cut of **115 at
   Harvester Works produced no Illinois WARN record at all** — verified absent from the August,
   September and October 2025 monthly reports.
+- The clearest measure of how much Illinois misses: **Moline Seeding & Cylinder Works fell from
+  890 employees (690 production) in June 2024 to 625 (427 production) in October 2024** — a
+  265-person, 30% reduction reported in local news — and generated **zero Illinois WARN records
+  in 2024**. The WARN-based series for that plant shows only 52 (an August-2025 news event). The
+  true 2024–25 cut there is roughly six times what the notice record contains.
 - The federal six-month exemption excludes short furloughs, and scheduled shutdown weeks are never
   WARN-reportable.
 - Kansas, Georgia, Louisiana, North Dakota, Michigan and Minnesota WARN databases refused scripted
@@ -244,7 +255,7 @@ off the street. **A plant does not hire externally while producing below plan.**
 | Segment | Labour evidence in/around Q3 | Guidance | Read |
 |---|---|---|---|
 | **CF** | All 2026 activity: Dubuque, Davenport, Coffeyville. External hiring by June. Order book "up more than 60% since November … over 80% of production slots filled". | +~20% | **Corroborated.** The clearest of the three. |
-| **PPA** | 146 recalled to Waterloo (8R tractors) in February — **but Harvester Works, the sole NA combine plant, received nothing in 2026**, after 300+21+115 cuts in 2024–25. | −5% to −10% | **Mildly better than plan on tractors, no improvement on combines.** |
+| **PPA** | 146 recalled to Waterloo (8R tractors) in February — **but Harvester Works, the sole NA combine plant, received nothing in 2026**, after 415 cuts in 2024–25 (279 + 21 by WARN, plus a 115-worker action in Aug-2025 that fell below the Illinois threshold and was never filed). | −5% to −10% | **Mildly better than plan on tractors, no improvement on combines.** |
 | **SAT** | **No plant events either way** in 2026. Ottumwa and Horicon silent. | +~15% | **No information.** Do not infer support from silence here. |
 
 ### Verdict on the revenue range

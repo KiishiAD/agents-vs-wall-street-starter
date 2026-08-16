@@ -25,7 +25,7 @@ TEST 2 -- QUARTERLY: net plant labour delta vs segment net sales YoY
   FiscalQ  layoffs eff  recalls ann     net   PPA y/y   SAT y/y    CF y/y
 2024  Q1            0            0       0     -6.7%    -19.2%      0.3%
 2024  Q2          368            0    -368    -15.9%    -23.2%     -6.5%
-2024  Q3          471            0    -471    -25.1%    -18.3%    -13.5%
+2024  Q3          303            0    -303    -25.1%    -18.3%    -13.5%
 2024  Q4          934            0    -934    -38.2%    -25.5%    -28.8%
 2025  Q1          192            0    -192    -36.7%    -27.9%    -37.9%
 2025  Q2          122            0    -122    -20.5%     -6.0%    -23.3%
@@ -36,30 +36,30 @@ TEST 2 -- QUARTERLY: net plant labour delta vs segment net sales YoY
 2026  Q3            0           50      50        ?        ?        ?
 
   Aggregate net labour delta (all production plants) vs segment revenue YoY:
-    PPA  lag +0Q:  n=10  r=+0.487 p~0.114
-    PPA  lag +1Q:  n= 9  r=+0.594 p~0.051
-    PPA  lag +2Q:  n= 8  r=+0.390 p~0.299
-    SAT  lag +0Q:  n=10  r=+0.619 p~0.026
-    SAT  lag +1Q:  n= 9  r=+0.508 p~0.118
-    SAT  lag +2Q:  n= 8  r=+0.258 p~0.512
-    CF  lag +0Q:  n=10  r=+0.536 p~0.073
-    CF  lag +1Q:  n= 9  r=+0.619 p~0.037
-    CF  lag +2Q:  n= 8  r=+0.502 p~0.155
+    PPA  lag +0Q:  n=10  r=+0.468 p~0.134
+    PPA  lag +1Q:  n= 9  r=+0.519 p~0.109
+    PPA  lag +2Q:  n= 8  r=+0.306 p~0.431
+    SAT  lag +0Q:  n=10  r=+0.604 p~0.032
+    SAT  lag +1Q:  n= 9  r=+0.451 p~0.181
+    SAT  lag +2Q:  n= 8  r=+0.161 p~0.689
+    CF  lag +0Q:  n=10  r=+0.527 p~0.079
+    CF  lag +1Q:  n= 9  r=+0.569 p~0.067
+    CF  lag +2Q:  n= 8  r=+0.411 p~0.270
 
   SEGMENT-MATCHED labour delta (only that segment's plants) vs its revenue YoY:
-    PPA  lag +0Q:  n=10  r=+0.330 p~0.323
-    PPA  lag +1Q:  n= 9  r=+0.561 p~0.073
-    PPA  lag +2Q:  n= 8  r=+0.535 p~0.121
+    PPA  lag +0Q:  n=10  r=+0.309 p~0.359
+    PPA  lag +1Q:  n= 9  r=+0.488 p~0.139
+    PPA  lag +2Q:  n= 8  r=+0.461 p~0.203
     SAT  lag +0Q:  n=10  r=-0.027 p~0.939
     SAT  lag +1Q:  n= 9  r=-0.102 p~0.786
     SAT  lag +2Q:  n= 8  r=-0.222 p~0.577
-    CF  lag +0Q:  n=10  r=+0.682 p~0.008
-    CF  lag +1Q:  n= 9  r=+0.686 p~0.013
-    CF  lag +2Q:  n= 8  r=+0.369 p~0.330
+    CF  lag +0Q:  n=10  r=+0.667 p~0.011
+    CF  lag +1Q:  n= 9  r=+0.646 p~0.025
+    CF  lag +2Q:  n= 8  r=+0.309 p~0.427
 
   Segment-matched quarterly labour deltas actually observed:
     2024Q2: PPA -368
-    2024Q3: CF -34, PPA -437
+    2024Q3: PPA -303
     2024Q4: CF -310, PPA -624
     2025Q1: CF -80, PPA -112
     2025Q2: PPA -47, SAT -75
@@ -71,9 +71,13 @@ TEST 2 -- QUARTERLY: net plant labour delta vs segment net sales YoY
 
   Rows excluded from production aggregates (salaried / corporate / contractor):
     2018-09-07  Multiple Quad Cities sites       employees_affected=79
+    2024-06-03  Des Moines Works (salaried)      employees_affected=16
     2024-06-03  Intelligent Solutions Group      employees_affected=58
+    2024-06-03  Waterloo Works (salaried)        employees_affected=49
     2024-06-07  Intelligent Solutions Group      employees_affected=1
+    2024-07-24  Dubuque Works (salaried)         employees_affected=34
     2024-07-24  John Deere Financial             employees_affected=67
+    2024-07-24  Waterloo Works (salaried)        employees_affected=69
     2024-07-25  World Headquarters               employees_affected=298
     2026-06-11  Multiple US factories            employees_recalled_cumulative=400
     2026-08-02  Multiple Quad Cities sites       warn_notices_filed=0
@@ -89,16 +93,16 @@ TEST 3 -- DOES THE LABOUR SIGNAL BEAT PERSISTENCE? (the test that matters)
 
   PPA:
     persistence   revYoY(t)   -> revYoY(t+1) : n= 9  r=+0.610
-    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.594
-    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.060
+    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.519
+    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.001
   SAT:
     persistence   revYoY(t)   -> revYoY(t+1) : n= 9  r=+0.838
-    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.508
-    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.069
+    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.451
+    labour->accel labour(t)   -> d revYoY     : n= 9  r=-0.003
   CF:
     persistence   revYoY(t)   -> revYoY(t+1) : n= 9  r=+0.812
-    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.619
-    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.416
+    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.569
+    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.345
 
   Directional hit rate, sign of net labour delta vs sign of next-quarter
   revenue YoY acceleration (the only usable form of the signal):
