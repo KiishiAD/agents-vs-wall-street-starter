@@ -8,6 +8,9 @@
     "check:entry": "node scripts/check-entry.mjs",
     "check:forecasts": "node scripts/check-forecasts.mjs submission",
     "check:submission": "npm run check:entry && npm run check:forecasts",
+    "forecast": "./scripts/run.sh",
+    "validate": "python3 scripts/validate_forecasts.py evaluation/forecasts.json",
+    "write": "python3 scripts/write_workbooks.py",
     "test:starter": "python3 -m unittest discover -s starter -p 'test_*.py'"
   },
   "dependencies": {

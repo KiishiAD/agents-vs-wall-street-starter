@@ -1,0 +1,113 @@
+==============================================================================
+TEST 1 -- ANNUAL: UAW-covered active US production heads vs equipment net sales
+==============================================================================
+    FY  equip sales YoY  UAW heads YoY
+  2016            -9.3%         -24.0%
+  2017            10.7%          14.5%
+  2018            28.8%          10.3%
+  2019             4.6%          -3.1%
+  2020           -10.4%          -6.0%
+  2021            27.1%          20.1%
+  2022            20.6%           9.5%
+  2023            16.0%           0.0%
+  2024           -19.4%         -22.6%
+  2025           -13.1%         -14.6%
+
+  n=10  r=+0.891  slope=1.02 (sales pp per head pp)  intercept=+7.2
+  crude two-sided p ~ 0.0000
+  excluding FY2016 definitional break: n=9  r=+0.902  slope=1.15
+  DOWN years: n=4 mean(head YoY - sales YoY)=-3.8pp
+  UP years: n=6 mean(head YoY - sales YoY)=-9.4pp
+
+==============================================================================
+TEST 2 -- QUARTERLY: net plant labour delta vs segment net sales YoY
+==============================================================================
+  FiscalQ  layoffs eff  recalls ann     net   PPA y/y   SAT y/y    CF y/y
+2024  Q1            0            0       0     -6.7%    -19.2%      0.3%
+2024  Q2          368            0    -368    -15.9%    -23.2%     -6.5%
+2024  Q3          471            0    -471    -25.1%    -18.3%    -13.5%
+2024  Q4          934            0    -934    -38.2%    -25.5%    -28.8%
+2025  Q1          192            0    -192    -36.7%    -27.9%    -37.9%
+2025  Q2          122            0    -122    -20.5%     -6.0%    -23.3%
+2025  Q3           72            0     -72    -16.2%     -0.9%     -5.4%
+2025  Q4          339            0    -339     10.1%      6.5%     27.0%
+2026  Q1           40           99      59      3.1%     24.0%     33.9%
+2026  Q2            0          222     222    -13.9%     16.4%     28.6%
+2026  Q3            0           50      50        ?        ?        ?
+
+  Aggregate net labour delta (all production plants) vs segment revenue YoY:
+    PPA  lag +0Q:  n=10  r=+0.487 p~0.114
+    PPA  lag +1Q:  n= 9  r=+0.594 p~0.051
+    PPA  lag +2Q:  n= 8  r=+0.390 p~0.299
+    SAT  lag +0Q:  n=10  r=+0.619 p~0.026
+    SAT  lag +1Q:  n= 9  r=+0.508 p~0.118
+    SAT  lag +2Q:  n= 8  r=+0.258 p~0.512
+    CF  lag +0Q:  n=10  r=+0.536 p~0.073
+    CF  lag +1Q:  n= 9  r=+0.619 p~0.037
+    CF  lag +2Q:  n= 8  r=+0.502 p~0.155
+
+  SEGMENT-MATCHED labour delta (only that segment's plants) vs its revenue YoY:
+    PPA  lag +0Q:  n=10  r=+0.330 p~0.323
+    PPA  lag +1Q:  n= 9  r=+0.561 p~0.073
+    PPA  lag +2Q:  n= 8  r=+0.535 p~0.121
+    SAT  lag +0Q:  n=10  r=-0.027 p~0.939
+    SAT  lag +1Q:  n= 9  r=-0.102 p~0.786
+    SAT  lag +2Q:  n= 8  r=-0.222 p~0.577
+    CF  lag +0Q:  n=10  r=+0.682 p~0.008
+    CF  lag +1Q:  n= 9  r=+0.686 p~0.013
+    CF  lag +2Q:  n= 8  r=+0.369 p~0.330
+
+  Segment-matched quarterly labour deltas actually observed:
+    2024Q2: PPA -368
+    2024Q3: CF -34, PPA -437
+    2024Q4: CF -310, PPA -624
+    2025Q1: CF -80, PPA -112
+    2025Q2: PPA -47, SAT -75
+    2025Q3: PPA -72
+    2025Q4: PPA -339
+    2026Q1: CF +99, PPA -40
+    2026Q2: CF +76, PPA +146
+    2026Q3: CF +50
+
+  Rows excluded from production aggregates (salaried / corporate / contractor):
+    2018-09-07  Multiple Quad Cities sites       employees_affected=79
+    2024-06-03  Intelligent Solutions Group      employees_affected=58
+    2024-06-07  Intelligent Solutions Group      employees_affected=1
+    2024-07-24  John Deere Financial             employees_affected=67
+    2024-07-25  World Headquarters               employees_affected=298
+    2026-06-11  Multiple US factories            employees_recalled_cumulative=400
+    2026-08-02  Multiple Quad Cities sites       warn_notices_filed=0
+    2026-08-02  Multiple US factories            warn_notices_filed=0
+
+==============================================================================
+TEST 3 -- DOES THE LABOUR SIGNAL BEAT PERSISTENCE? (the test that matters)
+==============================================================================
+  Both the labour delta and revenue YoY move monotonically through one V-shaped
+  cycle, so a positive correlation is close to guaranteed and means little. The
+  real question: does labour tell you anything the revenue series does not already
+  tell you about itself?
+
+  PPA:
+    persistence   revYoY(t)   -> revYoY(t+1) : n= 9  r=+0.610
+    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.594
+    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.060
+  SAT:
+    persistence   revYoY(t)   -> revYoY(t+1) : n= 9  r=+0.838
+    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.508
+    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.069
+  CF:
+    persistence   revYoY(t)   -> revYoY(t+1) : n= 9  r=+0.812
+    labour        labour(t)   -> revYoY(t+1) : n= 9  r=+0.619
+    labour->accel labour(t)   -> d revYoY     : n= 9  r=+0.416
+
+  Directional hit rate, sign of net labour delta vs sign of next-quarter
+  revenue YoY acceleration (the only usable form of the signal):
+    PPA: 3/8 correct (38%)  -- n=8, coin-flip band is wide
+    SAT: 2/8 correct (25%)  -- n=8, coin-flip band is wide
+    CF: 3/8 correct (38%)  -- n=8, coin-flip band is wide
+
+NOTE: TEST 2 and TEST 3 span a single cycle turn. n is 8-11 quarterly observations
+with one trough and one recovery; every correlation is descriptive of that one
+episode and is NOT an estimated coefficient. Do not quote it as a validated
+relationship. TEST 1 (n=10 annual) is the only calibration with any real support,
+and even that is 10 points on a deeply cyclical business.
