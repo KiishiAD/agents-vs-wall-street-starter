@@ -16,6 +16,7 @@ import {
   getRuns,
   getRun,
   getRunLog,
+  getProfile,
 } from "./store.js";
 
 const PORT = process.env.PORT || 8787;
@@ -52,6 +53,7 @@ app.get(
 );
 
 app.get("/api/companies/:slug/forecast", wrap(async (req, res) => res.json(await getForecast(req.params.slug))));
+app.get("/api/companies/:slug/profile", wrap(async (req, res) => res.json(await getProfile(req.params.slug))));
 app.get("/api/companies/:slug/signals", wrap(async (req, res) => res.json(await getSignals(req.params.slug))));
 app.get(
   "/api/companies/:slug/signals/:id",

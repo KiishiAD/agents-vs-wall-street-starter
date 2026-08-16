@@ -13,6 +13,7 @@ import {
   agentFile,
   runFile,
   runLogFile,
+  profileFile,
 } from "./paths.js";
 
 // ---------- low-level helpers ----------
@@ -94,6 +95,8 @@ export async function listCompanySlugs() {
 
 export const getCompany = (slug) => readJson(companyFile(slug));
 export const getForecast = (slug) => readJson(forecastFile(slug));
+// Source-backed research profile (cited claims, metrics, signal map). Optional.
+export const getProfile = (slug) => readJson(profileFile(slug));
 
 export async function getSignals(slug) {
   const ids = await listJson(signalsDir(slug));
@@ -126,13 +129,14 @@ export const getRunLog = (slug, id) => readLog(runLogFile(slug, id));
 export async function getCompanyBundle(slug) {
   const company = await getCompany(slug);
   if (!company) return null;
-  const [forecast, signals, agents, runs] = await Promise.all([
+  const [forecast, signals, agents, runs, profile] = await Promise.all([
     getForecast(slug),
     getSignals(slug),
     getAgents(slug),
     getRuns(slug),
+    getProfile(slug),
   ]);
-  return { company, forecast, signals, agents, runs };
+  return { company, forecast, signals, agents, runs, profile };
 }
 
 export async function listCompanies() {
@@ -171,4 +175,5 @@ export {
   agentFile,
   runFile,
   runLogFile,
+  profileFile,
 };
