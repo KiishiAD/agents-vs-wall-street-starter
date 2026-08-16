@@ -78,7 +78,23 @@ python3 example.py
 
 The example uses ADI's 20 May 2026 SEC-filed earnings release and writes `build/example-adi-revenue-receipt.json`. The receipt preserves the SEC URL, local corpus path, SHA-256, exact quotation, signal decision and Decimal formula. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the Red/Blue worker workflow and limits.
 
-## One-command run
+## Run it
+
+One command runs the whole thing — forecast all 12 metrics (four companies × three) through the four-agent pipeline, fill the four submission workbooks from that output, and validate them:
+
+```bash
+./scripts/forecast.sh          # or:  npm run forecast
+```
+
+That runs three steps and leaves `submission/HD-FY2026Q2.xlsx`, `ADI-FY2026Q3.xlsx`, `HAS-FY2026.xlsx`, `DE-FY2026Q3.xlsx` ready for manual upload:
+
+1. **Pipeline** — `python3 run.py --workers 4` forecasts every metric (initialiser → signal extractor → analyst consensus), in parallel, printing the numbers.
+2. **Workbooks** — `python3 scripts/pipeline_workbooks.py` fills the templates from the pipeline output, following the output guidelines (refuses on any label/unit mismatch).
+3. **Check** — `npm run check:forecasts` runs the organisers' own workbook validation.
+
+First time only: `npm install && pip3 install -r requirements.txt` (the workbook writer needs `openpyxl`).
+
+## One-command run (numbers only)
 
 `run.py` runs the four-agent pipeline (initialiser → signal extractor → analyst consensus) over the deterministic engine and returns the forecast numbers. The numbers you want are declared in `forecasts.json` — each job names a company profile, a target metric and the source-backed observations to resolve — so you configure which figures to produce without touching code.
 

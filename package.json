@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "forecast": "./scripts/forecast.sh",
     "run": "python3 run.py",
     "workbooks": "python3 scripts/pipeline_workbooks.py",
     "test": "python3 scripts/test_parallel.py",
