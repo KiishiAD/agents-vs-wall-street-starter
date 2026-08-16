@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Centurion — Architecture</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root{
       --paper:#faf8f3; --card:#fffdf9; --ink:#2a251f; --ink-soft:#4b443b;
@@ -15,8 +12,8 @@
       --anchor:#c2694a; --driver:#4f7a8a; --modifier:#9a7bb0; --constraint:#6b7280; --scenario:#c99a3a;
       --up:#5f8a5c; --sand:#f0eadd;
       --radius:16px;
-      --serif:'Fraunces',ui-serif,Georgia,serif;
-      --sans:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+      --serif:ui-serif,Georgia,serif;
+      --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
       --mono:'SF Mono',ui-monospace,'JetBrains Mono',Menlo,monospace;
     }
     *{box-sizing:border-box;}
@@ -175,7 +172,7 @@
         <a href="#orchestration">Orchestration</a>
         <a href="#worker">The worker</a>
         <a href="#signals">Signals</a>
-        <a href="#provenance">Provenance</a>
+        <a href="#provenance">Compiler &amp; receipts</a>
         <a href="#scope">Scope</a>
       </div>
     </div>
@@ -184,13 +181,13 @@
   <header class="wrap">
     <p class="eyebrow">Agents vs Wall Street</p>
     <h1>An evidence-to-forecast <em>compiler</em></h1>
-    <p class="lede">One reusable forecasting worker, run four times in parallel — one per company. Each builds a
-      source-backed profile, maps the signals that move each metric, resolves them into cited evidence, and combines
-      them with deterministic code into an auditable forecast.</p>
+    <p class="lede">One reusable forecasting pipeline, run once per company. It turns frozen, reviewed evidence into a
+      compact signal handoff, then uses deterministic <span class="mono">Decimal</span> formulas to create auditable
+      forecast values and completed workbooks.</p>
     <div class="guardrail">
-      <p><b>The rule that keeps it honest.</b> The model may propose structured observations. It may <b>not</b> invent
-      sources, choose arbitrary weights, perform forecast arithmetic, or write submission values. A signal moves a
-      number only when its evidence and declared transformation pass deterministic validation.</p>
+      <p><b>The rule that keeps it honest.</b> A model may propose structured observations. It may <b>not</b> invent
+      sources, choose arbitrary weights, perform forecast arithmetic, or write workbook values. A number moves only
+      when its frozen evidence, passed review, and declared transformation pass deterministic validation.</p>
     </div>
     <div class="companies">
       <div class="chip"><img src="logos/home-depot.png" alt="">Home Depot <span class="tk">HD</span></div>
@@ -206,8 +203,8 @@
       <div class="sec-head reveal">
         <p class="eyebrow">How the work fans out</p>
         <h2>One worker, four companies, in parallel</h2>
-        <p>The research runner creates one source candidate bundle per company. It freezes evidence in parallel;
-          deterministic code decides what may enter the forecast compiler.</p>
+        <p>The runner can process companies in parallel. Each lane freezes its evidence; only a validated,
+          review-passed <span class="mono">signal_handoff.v1</span> can reach the forecast compiler.</p>
       </div>
 
       <svg class="diagram reveal" viewBox="0 0 960 560" role="img" aria-label="Orchestration diagram">
@@ -239,8 +236,8 @@
         <!-- orchestrator -->
         <foreignObject x="360" y="14" width="240" height="60">
           <div xmlns="http://www.w3.org/1999/xhtml" class="node-box node-orch">
-            <div class="t">Orchestrator</div>
-            <div class="s">agent plugin · spawns one worker per company</div>
+            <div class="t">Centurion pipeline</div>
+            <div class="s">one source-frozen handoff per company</div>
           </div>
         </foreignObject>
 
@@ -266,7 +263,7 @@
 
         <!-- convergence -->
         <foreignObject x="340" y="466" width="280" height="64"><div xmlns="http://www.w3.org/1999/xhtml" class="node-box node-val">
-          <div class="t">Validate &amp; compile</div><div class="s">source checks → forecast input</div>
+          <div class="t">Validate, compile &amp; write</div><div class="s">handoff → receipt → workbook</div>
         </div></foreignObject>
       </svg>
     </div>
@@ -277,26 +274,26 @@
     <div class="wrap">
       <div class="sec-head reveal">
         <p class="eyebrow">The worker</p>
-        <h2>Every worker follows six stages</h2>
-        <p>Build a source-backed profile, choose the signals that matter, freeze and validate evidence, then combine
-          accepted observations into an auditable forecast.</p>
+        <h2>Every company follows six stages</h2>
+        <p>Build a source-backed profile, resolve only approved evidence, validate a compact handoff, and compile
+          each target metric into an auditable forecast.</p>
       </div>
 
       <div class="pipe reveal">
         <div class="pipe-track"></div>
         <div class="stages">
-          <div class="stage"><div class="num">1</div><h3>Profile</h3><div class="team red">Red + Blue</div>
+          <div class="stage"><div class="num">1</div><h3>Profile</h3><div class="team red">Research</div>
             <p>Freeze admissible sources for business model, calendar, segments, drivers, accounting and guidance.</p></div>
-          <div class="stage"><div class="num">2</div><h3>Signal map</h3><div class="team red">Team Red</div>
+          <div class="stage"><div class="num">2</div><h3>Signal map</h3><div class="team red">Declared rules</div>
             <p>Name the 3–7 material signals that could move each metric, each with a declared role and direction.</p></div>
-          <div class="stage"><div class="num">3</div><h3>Resolve</h3><div class="team blue">Team Blue</div>
+          <div class="stage"><div class="num">3</div><h3>Resolve</h3><div class="team blue">Evidence only</div>
             <p>Tavily searches only approved signals; exact quotes are checked against frozen source files.</p></div>
-          <div class="stage"><div class="num">4</div><h3>Combine</h3><div class="team red">Team Red</div>
-            <p>Anchor + approved driver adjustments = base forecast, computed in <span class="mono">Decimal</span>.</p></div>
-          <div class="stage"><div class="num">5</div><h3>Scenarios</h3><div class="team red">Team Red</div>
-            <p>Low / base / high. Scenario triggers stay out of the base unless their condition actually occurs.</p></div>
-          <div class="stage"><div class="num">6</div><h3>Challenge &amp; validate</h3><div class="team ind">Independent</div>
-            <p>Code checks dates, hashes, quotes, units, basis and correlation; a no-web reviewer flags leakage.</p></div>
+          <div class="stage"><div class="num">4</div><h3>Handoff</h3><div class="team ind">Fail closed</div>
+            <p>Reject bad hashes, quotes, cutoff dates, units, bases, unresolved conflicts, or incomplete review.</p></div>
+          <div class="stage"><div class="num">5</div><h3>Compile</h3><div class="team red">Decimal engine</div>
+            <p>Use direct guidance, annual bridges, weighted-rate bridges, or explicit component sums.</p></div>
+          <div class="stage"><div class="num">6</div><h3>Receipt &amp; workbook</h3><div class="team ind">Replayable</div>
+            <p>Save the formula and evidence chain, then write only the three permitted workbook cells.</p></div>
         </div>
       </div>
     </div>
@@ -318,10 +315,10 @@
           <p>A direct, defensible estimate that forms the forecast's starting point.</p>
           <p class="ex"><b>e.g.</b> Management's stated Q3 revenue guidance range.</p></div>
         <div class="role" style="--rc:var(--driver)"><span class="tag">driver</span><h3>Moves the number</h3>
-          <p>A quantified effect applied through an explicit formula.</p>
-          <p class="ex"><b>e.g.</b> revenue × volume change × price/mix change.</p></div>
+          <p>A quantified effect applied only through an explicit sourced formula.</p>
+          <p class="ex"><b>e.g.</b> an annual total reconciled to reported year-to-date results.</p></div>
         <div class="role" style="--rc:var(--modifier)"><span class="tag">modifier</span><h3>Guides judgement</h3>
-          <p>Qualitative evidence that selects the upper or lower half — never given false precision.</p>
+          <p>Qualitative evidence retained as receipt context — never given false precision or a base-case weight.</p>
           <p class="ex"><b>e.g.</b> "automotive demand stronger than expected."</p></div>
         <div class="role" style="--rc:var(--scenario)"><span class="tag">scenario&nbsp;trigger</span><h3>Conditional risk</h3>
           <p>A risk that only matters if an event occurs — lives in a scenario, not the base.</p>
@@ -336,23 +333,23 @@
       <div class="sec-head reveal">
         <p class="eyebrow">Traceability</p>
         <h2>Every number keeps its receipt</h2>
-        <p>No value reaches a forecast without an unbroken chain from a hashed source to an explicit formula.
-          Accepted inputs replay to the same output.</p>
+        <p>No value reaches a forecast without an unbroken chain from a hashed source to a passed review and explicit
+          formula. Accepted inputs replay to the same output.</p>
       </div>
       <div class="chain" id="chain">
         <div class="link"><div class="ic">01</div><div class="tx"><b>Source</b><span>URL + publication time + frozen file + SHA-256 hash</span></div></div>
         <div class="chain-gap"></div>
         <div class="link"><div class="ic">02</div><div class="tx"><b>Exact quotation</b><span>verbatim text + locator, verified against the frozen source</span></div></div>
         <div class="chain-gap"></div>
-        <div class="link"><div class="ic">03</div><div class="tx"><b>Typed observation</b><span>decimal value, units, period and accounting basis</span></div></div>
+        <div class="link"><div class="ic">03</div><div class="tx"><b>Compact handoff</b><span>decimal facts, guidance, units, period and accounting basis</span></div></div>
         <div class="chain-gap"></div>
         <div class="link"><div class="ic">04</div><div class="tx"><b>Approved signal</b><span>role, direction, combination method, correlation group</span></div></div>
         <div class="chain-gap"></div>
-        <div class="link"><div class="ic">05</div><div class="tx"><b>Validation decision</b><span>accepted or rejected, with a reason</span></div></div>
+        <div class="link"><div class="ic">05</div><div class="tx"><b>Passed review &amp; validation</b><span>cutoff, hash, quote, unit, basis and conflict checks</span></div></div>
         <div class="chain-gap"></div>
         <div class="link"><div class="ic">06</div><div class="tx"><b>Explicit Decimal formula</b><span>the arithmetic the code actually ran</span></div></div>
         <div class="chain-gap"></div>
-        <div class="link"><div class="ic">07</div><div class="tx"><b>Forecast component &amp; final value</b><span>written only to the required workbook cells</span></div></div>
+        <div class="link"><div class="ic">07</div><div class="tx"><b>Receipt &amp; final value</b><span>saved as JSON, then written only to the required workbook cells</span></div></div>
       </div>
     </div>
   </section>
@@ -369,15 +366,15 @@
         <div class="scope-col">
           <h3><span class="mark y">✓</span> Implemented now</h3>
           <ul>
-            <li><span class="mark y">✓</span> Strict JSON company profiles and signal maps</li>
+            <li><span class="mark y">✓</span> Strict JSON company profiles, signal maps and reviewed signal handoffs</li>
             <li><span class="mark y">✓</span> Bounded Tavily search/extract and concurrent company lanes</li>
             <li><span class="mark y">✓</span> Frozen source hashes, exact quotations and cutoff checks</li>
             <li><span class="mark y">✓</span> Three-to-seven signals, one anchor and unit/basis validation</li>
-            <li><span class="mark y">✓</span> Reusable management-guidance and explicit-driver resolvers</li>
-            <li><span class="mark y">✓</span> Deterministic anchor-plus-driver combination in <span class="mono">Decimal</span></li>
-            <li><span class="mark y">✓</span> Qualitative modifiers and conditional scenarios, no arbitrary weights</li>
-            <li><span class="mark y">✓</span> Challenge checks for unsupported evidence, mismatches, double-counting</li>
-            <li><span class="mark y">✓</span> No-web look-ahead review and replayable JSON run receipts</li>
+            <li><span class="mark y">✓</span> Direct guidance, annual bridge, weighted-rate bridge and component-sum methods</li>
+            <li><span class="mark y">✓</span> Deterministic forecast compilation in <span class="mono">Decimal</span></li>
+            <li><span class="mark y">✓</span> Historical weights derived from frozen facts; no arbitrary weights</li>
+            <li><span class="mark y">✓</span> Cutoff-safe review gates, conflict blocking and replayable JSON receipts</li>
+            <li><span class="mark y">✓</span> Safe workbook writer and an all-company handoff pipeline</li>
           </ul>
         </div>
         <div class="scope-col">
@@ -386,9 +383,9 @@
             <li><span class="mark n">✕</span> Generic news sentiment</li>
             <li><span class="mark n">✕</span> Automatic supplier-network inference</li>
             <li><span class="mark n">✕</span> Arbitrary model-generated weights</li>
-            <li><span class="mark n">✕</span> Unrestricted LLM arithmetic</li>
+            <li><span class="mark n">✕</span> Unrestricted LLM arithmetic or worksheet edits</li>
             <li><span class="mark n">✕</span> A universal financial ontology</li>
-            <li><span class="mark n">✕</span> A multi-agent swarm</li>
+            <li><span class="mark n">✕</span> Forecasts from incomplete, unreviewed or undated evidence</li>
           </ul>
         </div>
       </div>
