@@ -3,8 +3,8 @@
 This document describes the earlier five-worker `forecast_input.v1` path retained
 for comparison. The canonical evidence-gated design uses Tavily, company profiles,
 an independent look-ahead review and `forecast_input.v2`; see `ARCHITECTURE.md`.
-Two downstream adapters remain if the team chooses to keep `pipeline/run.py` as
-the final orchestrator: `forecasting.cli` and `workbook_generator.cli`.
+The downstream `forecasting.cli`, aggregation and `workbook_generator.cli` adapters
+are now implemented. This file otherwise documents the retained v1 comparison path.
 
 ## Setup
 
@@ -73,12 +73,18 @@ python3 -m workbook_generator.cli \
 
 It must copy the supplied template, fill only the three yellow forecast cells, preserve the `Summary` sheet, labels, units and period, and write the requested output path.
 
-## Final command
+## Final commands
 
-Once both packages exist:
+For a clean live research-to-workbook run with both keys in `.env`:
 
 ```bash
-python3 -m pipeline.run
+python3 -m pipeline.run --max-minutes 45
+```
+
+Once four validated `forecast_input.v2.1` files exist, rerun without paid APIs:
+
+```bash
+python3 -m pipeline.run --skip-research
 ```
 
 The command runs four isolated company lanes concurrently. Within each lane, research feeds the handoff, forecasting and workbook stages in order. It then runs `npm run check:forecasts` and saves a timestamped log under `logs/`. Each web researcher also receives a bounded, metric-relevant selection from the supplied frozen corpus and verifies it against current official web sources.

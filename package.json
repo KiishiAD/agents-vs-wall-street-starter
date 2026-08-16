@@ -17,6 +17,9 @@
     "signal:forecast-input": "python3 -m signal_agent.forecast_input",
     "research:profiles": "python3 -m signal_agent.company_research --stage profile",
     "research:signals": "python3 -m signal_agent.company_research --stage signals",
+    "research:all": "python3 -m signal_agent.research_pipeline",
+    "forecast:aggregate": "python3 -m forecasting.aggregate",
+    "test:pipeline": "python3 -m unittest discover -s tests -p 'test_forecast_pipeline.py'",
     "test:research": "python3 -m unittest discover -s tests -p 'test_*research*.py'",
     "pipeline": "python3 -m pipeline.run"
   },

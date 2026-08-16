@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import os
 import subprocess
@@ -41,7 +42,7 @@ class RunLog:
                 stream.write(line + "\n")
 
 
-def run_command(command: list[str], log: RunLog) -> None:
+def run_command(command: list[str], log: RunLog, *, allowed_exit_codes: tuple[int, ...] = (0,)) -> None:
     log.write("RUN " + " ".join(command))
     process = subprocess.run(
         command,
@@ -54,16 +55,12 @@ def run_command(command: list[str], log: RunLog) -> None:
     if process.stdout:
         for line in process.stdout.rstrip().splitlines():
             log.write("  " + line)
-    if process.returncode:
+    if process.returncode not in allowed_exit_codes:
         raise PipelineError(f"Command failed with exit code {process.returncode}: {' '.join(command)}")
 
 
 def ensure_module(module: str, owner: str) -> None:
-    result = subprocess.run(
-        [sys.executable, "-c", f"import {module}"], cwd=ROOT,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
-    if result.returncode:
+    if importlib.util.find_spec(module) is None:
         raise PipelineError(
             f"Missing {owner} implementation: Python module `{module}`. "
             f"Implement the interface documented in TEAM-HANDOFF.md."
@@ -85,6 +82,14 @@ def validate_forecast(company: str, path: Path) -> None:
             raise PipelineError(f"Non-numeric forecast in {path}: {forecast.get('metric')}")
 
 
+def validate_handoff(company: str, path: Path) -> None:
+    if not path.exists():
+        raise PipelineError(f"Missing prepared v2.1 handoff for {company}: {path}")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    if payload.get("schemaVersion") != "forecast_input.v2.1" or payload.get("companyId") != company:
+        raise PipelineError(f"{path} must be a forecast_input.v2.1 artifact for {company}")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run research, forecasting and workbook generation")
     parser.add_argument("--companies", nargs="+", choices=COMPANIES, default=list(COMPANIES))
@@ -92,37 +97,36 @@ def main() -> None:
     parser.add_argument("--model", default="gpt-5.6-terra")
     parser.add_argument("--parallel-companies", type=int, default=4, choices=range(1, 5))
     parser.add_argument("--through", choices=STAGE_ORDER, default="workbooks")
-    parser.add_argument("--skip-research", action="store_true", help="Reuse existing signals/*/latest.json")
+    parser.add_argument("--skip-research", action="store_true", help="Reuse existing forecast_inputs/*.json")
+    parser.add_argument("--max-minutes", type=float, default=45, help="Maximum live-research runtime")
     args = parser.parse_args()
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     log = RunLog(ROOT / "logs" / f"pipeline-{run_id}.log")
     log.write(f"START run_id={run_id} companies={','.join(args.companies)} model={args.model} effort={args.reasoning_effort}")
     try:
-        if not args.skip_research and not os.environ.get("OPENAI_API_KEY"):
-            raise PipelineError("OPENAI_API_KEY is not set")
         if STAGE_ORDER.index(args.through) >= STAGE_ORDER.index("forecasts"):
             ensure_module("forecasting.cli", "forecasting stage")
         if args.through == "workbooks":
             ensure_module("workbook_generator.cli", "workbook generation stage")
+        if not args.skip_research:
+            research_command = [
+                sys.executable, "-m", "signal_agent.research_pipeline",
+                "--model", args.model, "--reasoning-effort", args.reasoning_effort,
+                "--company-workers", str(args.parallel_companies), "--max-minutes", str(args.max_minutes),
+            ]
+            for company in args.companies:
+                research_command.extend(["--company", company])
+            run_command(research_command, log)
 
         def run_company(company: str) -> None:
             log.write(f"COMPANY {company} START")
-            if not args.skip_research:
-                run_command(
-                    [
-                        sys.executable, "-m", "signal_agent.cli", "--company", company,
-                        "--model", args.model, "--reasoning-effort", args.reasoning_effort,
-                    ],
-                    log,
-                )
             if args.through == "signals":
                 log.write(f"COMPANY {company} COMPLETE through=signals")
                 return
-            run_command(
-                [sys.executable, "-m", "signal_agent.forecast_input", "--company", company],
-                log,
-            )
+            handoff_path = ROOT / "forecast_inputs" / f"{company}.json"
+            validate_handoff(company, handoff_path)
+            log.write(f"COMPANY {company} {'REUSE' if args.skip_research else 'USE'} {handoff_path.relative_to(ROOT)}")
             if args.through == "inputs":
                 log.write(f"COMPANY {company} COMPLETE through=inputs")
                 return
@@ -163,7 +167,14 @@ def main() -> None:
             if failures:
                 raise PipelineError("; ".join(failures))
 
+        if args.through in {"forecasts", "workbooks"} and set(args.companies) == set(COMPANIES):
+            run_command([sys.executable, "-m", "forecasting.aggregate"], log)
         if args.through == "workbooks":
+            # validate_forecasts uses 0=clean, 1=warnings only, 2=errors.
+            run_command(
+                [sys.executable, "scripts/validate_forecasts.py", "evaluation/forecasts.json"],
+                log, allowed_exit_codes=(0, 1),
+            )
             run_command(["npm", "run", "check:forecasts"], log)
         log.write("COMPLETE all requested pipeline stages succeeded")
     except Exception as error:

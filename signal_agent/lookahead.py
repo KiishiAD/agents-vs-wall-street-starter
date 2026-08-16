@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import ssl
 import urllib.error
 import urllib.request
@@ -9,6 +8,8 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .research_validation import SUPPORTED_LOOKAHEAD_ISSUES
+from .secrets import load_secret
+from .http import verified_ssl_context
 
 
 class ReviewTransport(Protocol):
@@ -23,7 +24,7 @@ class UrlLibReviewTransport:
             headers=headers,
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=timeout, context=ssl.create_default_context()) as response:
+        with urllib.request.urlopen(request, timeout=timeout, context=verified_ssl_context()) as response:
             value = json.load(response)
         if not isinstance(value, dict):
             raise RuntimeError("OpenAI reviewer returned a non-object response")
@@ -61,9 +62,7 @@ class OpenAIReviewProvider:
     transport: ReviewTransport | None = None
 
     def __post_init__(self) -> None:
-        self.api_key = self.api_key or os.environ.get("OPENAI_API_KEY", "")
-        if not self.api_key:
-            raise RuntimeError("OPENAI_API_KEY is required for independent look-ahead review")
+        self.api_key = self.api_key or load_secret("OPENAI_API_KEY")
         self.transport = self.transport or UrlLibReviewTransport()
 
     def review(self, review_input: dict[str, Any]) -> dict[str, Any]:
@@ -74,7 +73,13 @@ class OpenAIReviewProvider:
             "instructions": (
                 "Act as an independent evidence-bound look-ahead reviewer. Use only the supplied source "
                 "manifest and excerpts. Do not use model memory as evidence. Flag claims that cannot be "
-                "reconstructed from admissible excerpts, post-cutoff facts, actuals presented as forecasts, "
+                "reconstructed from admissible excerpts, post-cutoff facts, or actuals presented as guidance. "
+                "A latest same-metric actual may be used as a forecast persistence baseline only when methodology "
+                "and calculation explicitly declare target equals that actual; do not label that as period leakage. Flag "
+                "unsupported factual inputs, but distinguish them from explicitly declared forecast assumptions. A "
+                "declared deterministic reconstruction (for example annualizing a sourced half-year actual) is an "
+                "analyst forecast method, not a claim that management supplied the resulting target. It need not be "
+                "stated by the source when its input, assumption, arithmetic, units, and target period are all explicit. "
                 "undeclared assumptions, suspicious precision, or period leakage. Return the schema only."
             ),
             "input": json.dumps(review_input, sort_keys=True, separators=(",", ":")),

@@ -14,6 +14,8 @@ from pathlib import Path
 from typing import Any, Protocol
 from urllib.parse import urlparse, urlunparse
 
+from .http import verified_ssl_context
+
 
 PROFILE_QUERY_TOPICS = {
     "businessModel": "business model revenue model value chain",
@@ -40,7 +42,7 @@ class UrlLibJsonTransport:
             headers=headers,
             method="POST",
         )
-        with urllib.request.urlopen(request, timeout=timeout, context=ssl.create_default_context()) as response:
+        with urllib.request.urlopen(request, timeout=timeout, context=verified_ssl_context()) as response:
             value = json.load(response)
         if not isinstance(value, dict):
             raise RuntimeError("Tavily returned a non-object response")
@@ -48,20 +50,9 @@ class UrlLibJsonTransport:
 
 
 def load_tavily_api_key(env_file: str | Path = ".env") -> str:
-    """Return the process key, falling back to a minimally parsed local .env file."""
-    process_value = os.environ.get("TAVILY_API_KEY", "").strip()
-    if process_value:
-        return process_value
-    path = Path(env_file)
-    if path.is_file():
-        for raw_line in path.read_text(encoding="utf-8").splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            if key.strip() == "TAVILY_API_KEY":
-                return value.strip().strip("'\"")
-    raise RuntimeError("TAVILY_API_KEY is not set; add it to the process environment or ignored .env file")
+    """Return the process key, falling back to an ignored local .env file."""
+    from .secrets import load_secret
+    return load_secret("TAVILY_API_KEY", env_file)
 
 
 @dataclass

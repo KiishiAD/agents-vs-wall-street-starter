@@ -80,7 +80,7 @@ def resolve_management_guidance(
         raise ObservationValidationError(f"unknown signal {signal_id}")
     if signal.role is not SignalRole.ANCHOR:
         raise ObservationValidationError(f"signal {signal_id} is not an anchor")
-    if signal.resolver != "extract_management_guidance":
+    if signal.resolver not in {"extract_management_guidance", "establish_forecast_baseline"}:
         raise ObservationValidationError(f"signal {signal_id} does not use management-guidance resolver")
     if signal.combination_method != "forecast_starting_range":
         raise ObservationValidationError(f"signal {signal_id} does not define a starting range")
@@ -133,7 +133,7 @@ def resolve_explicit_driver(
         raise ObservationValidationError(f"unknown signal {signal_id}")
     if signal.role is not SignalRole.DRIVER:
         raise ObservationValidationError(f"signal {signal_id} is not a quantitative driver")
-    if signal.resolver != "resolve_explicit_driver":
+    if signal.resolver not in {"extract_explicit_driver", "resolve_explicit_driver"}:
         raise ObservationValidationError(f"signal {signal_id} does not use explicit-driver resolver")
     if signal.combination_method != "additive_adjustment":
         raise ObservationValidationError(f"signal {signal_id} does not define an additive adjustment")
@@ -181,9 +181,9 @@ def resolve_qualitative_modifier(
         raise ObservationValidationError(f"unknown signal {signal_id}")
     if signal.role is not SignalRole.MODIFIER:
         raise ObservationValidationError(f"signal {signal_id} is not a qualitative modifier")
-    if signal.resolver != "resolve_qualitative_modifier":
+    if signal.resolver not in {"extract_qualitative_modifier", "resolve_qualitative_modifier"}:
         raise ObservationValidationError(f"signal {signal_id} does not use qualitative-modifier resolver")
-    if signal.combination_method != "range_selection_context":
+    if signal.combination_method not in {"qualitative_only", "range_selection_context"}:
         raise ObservationValidationError(f"signal {signal_id} does not define non-numeric range context")
     if period != signal.target_period:
         raise ObservationValidationError("observation period does not match signal target period")
@@ -229,9 +229,9 @@ def resolve_scenario_trigger(
         raise ObservationValidationError(f"unknown signal {signal_id}")
     if signal.role is not SignalRole.SCENARIO_TRIGGER:
         raise ObservationValidationError(f"signal {signal_id} is not a scenario trigger")
-    if signal.resolver != "resolve_scenario_trigger":
+    if signal.resolver not in {"extract_scenario_trigger", "resolve_scenario_trigger"}:
         raise ObservationValidationError(f"signal {signal_id} does not use scenario-trigger resolver")
-    if signal.combination_method != "conditional_additive_scenario":
+    if signal.combination_method not in {"conditional_adjustment", "conditional_additive_scenario"}:
         raise ObservationValidationError(f"signal {signal_id} does not define a conditional scenario")
     if period != signal.target_period:
         raise ObservationValidationError("observation period does not match signal target period")

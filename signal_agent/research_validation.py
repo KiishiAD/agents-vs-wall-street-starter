@@ -13,6 +13,7 @@ from .tavily import canonical_manifest_sha256, verify_frozen_quote
 
 SUPPORTED_SIGNAL_BEHAVIOUR = {
     ("anchor", "extract_management_guidance", "forecast_starting_range"),
+    ("anchor", "establish_forecast_baseline", "forecast_starting_range"),
     ("driver", "extract_explicit_driver", "additive_adjustment"),
     ("modifier", "extract_qualitative_modifier", "qualitative_only"),
     ("scenario_trigger", "extract_scenario_trigger", "conditional_adjustment"),
@@ -206,6 +207,14 @@ def _validate_decimal_value(value: Any, context: str) -> None:
             raise ResearchValidationError(f"{context} contains an invalid decimal string") from error
 
 
+def _is_decimal_value(value: Any) -> bool:
+    try:
+        _validate_decimal_value(value, "value")
+        return True
+    except ResearchValidationError:
+        return False
+
+
 def build_forecast_input_v2(
     *,
     company_id: str,
@@ -244,7 +253,9 @@ def build_forecast_input_v2(
         quote = observation.get("exactQuote")
         if not isinstance(quote, str) or not verify_frozen_quote(source, quote, source_root):
             raise ResearchValidationError(f"{context} quotation does not match frozen evidence")
-        _validate_decimal_value(observation.get("value"), f"{context}.value")
+        value = observation.get("value")
+        if not isinstance(value, str) or _is_decimal_value(value):
+            _validate_decimal_value(value, f"{context}.value")
         accepted.append(observation)
     return {
         "schemaVersion": "forecast_input.v2",
@@ -255,4 +266,56 @@ def build_forecast_input_v2(
         "researchAudit": research_audit,
         "lookaheadReview": lookahead_review,
         "provenanceManifestSha256": manifest_hash,
+    }
+
+
+def build_forecast_input_v2_1(
+    *, company: dict[str, Any], information_cutoff: str,
+    profile: dict[str, Any], metrics: list[dict[str, Any]],
+    signals: list[dict[str, Any]], profile_receipt: dict[str, Any],
+    signal_map_receipt: dict[str, Any], observations: list[dict[str, Any]],
+    sources: list[dict[str, Any]], source_root: str | Path,
+    research_audit: dict[str, Any], lookahead_review: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the self-contained, compiler-ready extension of forecast_input.v2."""
+    company_id = _require_text(company.get("id"), "company.id")
+    for field in ("name", "ticker", "currency", "fiscalCalendar"):
+        _require_text(company.get(field), f"company.{field}")
+    if len(metrics) != 3:
+        raise ResearchValidationError("forecast_input.v2.1 requires exactly three metrics")
+    validated_profile = validate_profile_candidate(profile, sources, source_root)
+    validated_map = validate_signal_map(metrics, signals)
+    if validated_profile != profile_receipt:
+        raise ResearchValidationError("profile receipt does not match supplied profile")
+    if validated_map != signal_map_receipt:
+        raise ResearchValidationError("signal-map receipt does not match supplied definitions")
+    role_by_signal = {item["id"]: item["role"] for item in signals if item.get("status") == "approved"}
+    for index, observation in enumerate(observations):
+        context = f"observations[{index}]"
+        _require_text(observation.get("locator"), f"{context}.locator")
+        role = role_by_signal.get(observation.get("signalId"))
+        if role == "modifier":
+            _require_text(observation.get("value"), f"{context}.value")
+        elif role in {"anchor", "driver", "scenario_trigger"}:
+            _validate_decimal_value(observation.get("value"), f"{context}.value")
+        if role in {"driver", "scenario_trigger"}:
+            _require_text(observation.get("calculation"), f"{context}.calculation")
+        if role == "scenario_trigger":
+            _require_text(observation.get("condition"), f"{context}.condition")
+    base = build_forecast_input_v2(
+        company_id=company_id, profile_receipt=profile_receipt,
+        signal_map_receipt=signal_map_receipt, observations=observations,
+        sources=sources, source_root=source_root, research_audit=research_audit,
+        lookahead_review=lookahead_review,
+    )
+    return {
+        **base,
+        "schemaVersion": "forecast_input.v2.1",
+        "company": company,
+        "informationCutoff": information_cutoff,
+        "profile": profile,
+        "metrics": metrics,
+        "signalMap": signals,
+        "sources": sources,
+        "sourceRoot": str(Path(source_root).resolve()),
     }

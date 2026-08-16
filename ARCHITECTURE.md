@@ -53,14 +53,17 @@ four concurrent company lanes: HAS · HD · ADI · DE
 | Fail-closed v2 construction | Implemented library | `build_forecast_input_v2(...)` |
 | Deterministic compiler | Implemented | `forecasting/` |
 | Final forecast validation and workbook writing | Implemented | `scripts/run.sh` |
-| Autonomous candidate-to-v2 orchestration | Integration still required | no single CLI yet |
-| v2-to-compiler adapter for all 12 figures | Integration still required | no single CLI yet |
+| Deterministic v2.1 handoff assembly | Implemented | `python3 -m signal_agent.handoff_cli` |
+| Autonomous profile and observation proposal | Implemented | `python3 -m signal_agent.research_pipeline` |
+| Offline corpus plus current web evidence | Implemented | concurrent company lanes in `research_pipeline.py` |
+| v2.1-to-compiler adapter for all 12 figures | Implemented | `python3 -m forecasting.cli` and `forecasting.aggregate` |
+| Per-company workbook adapter | Implemented | `python3 -m workbook_generator.cli` |
 
-`npm run forecast` currently validates existing `evaluation/forecasts.json` and
-writes the four workbooks. It does not run research. `python3 -m pipeline.run`
-currently drives the older v1 collector and expects downstream CLI adapters that
-do not yet exist. Do not describe either command as the complete autonomous v2
-system until those remaining adapters are connected.
+`python3 -m pipeline.run --max-minutes 45` is the single-command live path. It runs
+four isolated research lanes concurrently, combines Tavily evidence with the
+supplied offline corpus, creates audited v2.1 handoffs, compiles all twelve figures,
+validates them and writes the four workbooks. `--skip-research` reuses validated
+handoffs for a fast deterministic rerun.
 
 Research consensus confidence is useful for report discovery and extraction
 triage, but it is not forecast authority. Only evidence that passes the v2 source,

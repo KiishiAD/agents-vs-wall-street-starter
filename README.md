@@ -93,7 +93,21 @@ python3 -m unittest discover -s tests -v
 
 ## Tavily company and signal research
 
-Copy `.env.example` to the ignored `.env` file and set `TAVILY_API_KEY`. Set `OPENAI_API_KEY` only when running the independent no-web look-ahead reviewer. Secrets are read from the process or `.env`; they are never written to requests, artifacts or logs.
+Copy `.env.example` to the ignored `.env` file and set both `TAVILY_API_KEY` and
+`OPENAI_API_KEY`. Secrets are read from the process or `.env`; they are never
+written to requests, artifacts or logs.
+
+Run the complete four-company workflow, with a 45-minute live-research budget:
+
+```bash
+python3 -m pipeline.run --max-minutes 45
+```
+
+The four research lanes run concurrently. Each lane combines current official web
+research with the supplied offline corpus, generates a source-bound proposal for
+exactly the three challenge metrics, performs deterministic quote/hash/cutoff
+checks, and sends it to an independent no-web review before forecasting. A failed
+company or review stops the final submission rather than silently using a guess.
 
 Research all four company profiles concurrently:
 
@@ -110,6 +124,30 @@ npm run research:signals
 ```
 
 The second planner searches only evidence declared by approved signals. `signal_agent.research_validation` validates profile coverage, exact quotations, signal formulas, units, accounting basis, decimal-string observations, audit metadata and the independent review before emitting `forecast_input.v2`. The repository skill at `.agents/skills/researching-company-signals/` documents the operator workflow.
+
+## Forecast handoff and final stages
+
+For manual debugging, an operator can still build a self-contained compiler handoff:
+
+```bash
+python3 -m signal_agent.handoff_cli \
+  --proposal research/ADI-proposal.json \
+  --candidates research/ADI/signal-candidates.json \
+  --audit research/ADI-audit.json \
+  --review research/ADI-review.json \
+  --source-root research/ADI \
+  --output forecast_inputs/ADI.json
+```
+
+To rerun only the deterministic stages from existing validated handoffs:
+
+```bash
+python3 -m pipeline.run --skip-research
+```
+
+This compiles exactly three metrics per company, retains receipts and rejected-signal
+reasons, aggregates `evaluation/forecasts.json`, validates all twelve figures and
+writes the four supplied workbook templates.
 
 ## Repository map
 
