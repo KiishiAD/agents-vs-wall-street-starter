@@ -64,6 +64,7 @@ class SignalHandoff:
     company_id: str
     target_period: str
     information_cutoff: datetime
+    review_status: str
     sources: Mapping[str, FrozenSource]
     metrics: tuple[HandoffMetric, ...]
     facts: Mapping[str, SourcedFact]
@@ -155,7 +156,12 @@ def _parse_source(raw: Mapping[str, Any], root: Path, cutoff: datetime) -> Froze
     actual_hash = hashlib.sha256(path.read_bytes()).hexdigest()
     if actual_hash != supplied_hash:
         raise HandoffValidationError(f"sources[{source_id}] frozen file hash does not match sha256")
-    published_at = _datetime(raw.get("publishedAt"), f"sources[{source_id}].publishedAt")
+    published_text = _text(raw.get("publishedAt"), f"sources[{source_id}].publishedAt")
+    published_at = _datetime(published_text, f"sources[{source_id}].publishedAt")
+    if "T" not in published_text and published_at.date() == cutoff.date():
+        raise HandoffValidationError(
+            f"sources[{source_id}] has no publication time on the information-cutoff date"
+        )
     if published_at > cutoff:
         raise HandoffValidationError(f"sources[{source_id}] is post-cutoff")
     return FrozenSource(
@@ -206,6 +212,12 @@ def load_signal_handoff(path: str | Path, *, repository_root: str | Path | None 
     data = _mapping(raw, "handoff")
     if data.get("schemaVersion") != "signal_handoff.v1":
         raise HandoffValidationError("schemaVersion must be signal_handoff.v1")
+    if data.get("status") != "ready_for_assumptions":
+        raise HandoffValidationError("status must be ready_for_assumptions")
+    review = _mapping(data.get("review"), "review")
+    review_status = _text(review.get("status"), "review.status")
+    if review_status != "passed":
+        raise HandoffValidationError("review.status must be passed before forecasting")
     cutoff = _datetime(data.get("informationCutoff"), "informationCutoff")
     sources: dict[str, FrozenSource] = {}
     for value in _list(data.get("sources"), "sources"):
@@ -259,6 +271,7 @@ def load_signal_handoff(path: str | Path, *, repository_root: str | Path | None 
         company_id=_text(data.get("companyId"), "companyId"),
         target_period=_text(data.get("targetPeriod"), "targetPeriod"),
         information_cutoff=cutoff,
+        review_status=review_status,
         sources=sources,
         metrics=tuple(metrics),
         facts=facts,

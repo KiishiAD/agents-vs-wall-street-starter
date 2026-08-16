@@ -20,6 +20,7 @@ def build_handoff_receipt(handoff: SignalHandoff, result: CompanyForecast) -> di
         "companyId": result.company_id,
         "targetPeriod": result.target_period,
         "informationCutoff": result.information_cutoff,
+        "reviewStatus": handoff.review_status,
         "sources": [
             {
                 "id": source.source_id,

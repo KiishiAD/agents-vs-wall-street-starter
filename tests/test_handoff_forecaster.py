@@ -60,6 +60,7 @@ class HandoffForecasterTests(unittest.TestCase):
             "targetPeriod": "FY2026Q2",
             "informationCutoff": "2026-06-01T00:00:00+00:00",
             "status": "ready_for_assumptions",
+            "review": {"status": "passed"},
             "sources": [self._source()],
             "metrics": metrics,
             "supportingFacts": facts or [],
@@ -165,6 +166,19 @@ class HandoffForecasterTests(unittest.TestCase):
         path.write_text(json.dumps(payload), encoding="utf-8")
 
         with self.assertRaises(HandoffValidationError):
+            load_signal_handoff(path, repository_root=self.root)
+
+    def test_requires_a_passed_evidence_review(self) -> None:
+        metric = self._metric(
+            "revenue", "USDm", {"method": "direct_guidance"},
+            {"range": ["3800", "4000"], "unit": "USDm", "period": "FY2026Q2"},
+        )
+        payload = self._handoff([metric])
+        payload["review"] = {"status": "incomplete"}
+        path = self.root / "bad-review.json"
+        path.write_text(json.dumps(payload), encoding="utf-8")
+
+        with self.assertRaisesRegex(HandoffValidationError, "review.status"):
             load_signal_handoff(path, repository_root=self.root)
 
     def test_receipt_preserves_exact_decimals_while_workbook_payload_is_numeric(self) -> None:

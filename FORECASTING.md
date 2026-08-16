@@ -29,7 +29,10 @@ The compact signal output remains the centre of the input: `metrics`,
 forecast, enrich its source record with `publisher`, `title`, `documentType`,
 `frozenPath`, and `sha256`; enrich the fact or guidance with `exactQuote` and
 `locator`. The engine verifies the file hash, publication date, cutoff, and
-quotation before using it.
+quotation before using it. The handoff must also carry `review: {"status":
+"passed"}` from the evidence-bound look-ahead review. A date-only publication
+record is rejected when it falls on the information-cutoff date, because its
+publication time is uncertain.
 
 Each metric includes a declarative `forecastPlan`. Supported methods are:
 
