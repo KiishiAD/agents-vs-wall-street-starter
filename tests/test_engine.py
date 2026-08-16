@@ -12,12 +12,16 @@ from forecasting import (
     load_company_profile,
     resolve_explicit_driver,
     resolve_management_guidance,
+    resolve_qualitative_modifier,
+    resolve_scenario_trigger,
 )
 
 
 GUIDANCE_QUOTE = "Revenue guidance is $3.9 billion, plus or minus $100 million."
 DEMAND_QUOTE = "Verified orders support a direct $25 million revenue adjustment."
 BACKLOG_QUOTE = "Verified backlog supports a direct $15 million revenue adjustment."
+MODIFIER_QUOTE = "Industrial demand remains constructive."
+SCENARIO_QUOTE = "A proposed tariff would reduce target-quarter revenue if enacted."
 
 
 class ForecastEngineTests(unittest.TestCase):
@@ -26,7 +30,10 @@ class ForecastEngineTests(unittest.TestCase):
         self.root = Path(self.temp_dir.name)
         source_path = self.root / "filing.md"
         source_path.write_text(
-            f"# Results\n\n{GUIDANCE_QUOTE}\n\n{DEMAND_QUOTE}\n\n{BACKLOG_QUOTE}\n",
+            (
+                f"# Results\n\n{GUIDANCE_QUOTE}\n\n{DEMAND_QUOTE}\n\n{BACKLOG_QUOTE}"
+                f"\n\n{MODIFIER_QUOTE}\n\n{SCENARIO_QUOTE}\n"
+            ),
             encoding="utf-8",
         )
         source_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
@@ -66,6 +73,40 @@ class ForecastEngineTests(unittest.TestCase):
             "status": "pending",
         }
         backlog_driver = {**demand_driver, "id": "verified_backlog", "signal": "Verified backlog adjustment"}
+        modifier = {
+            "id": "industrial_demand_commentary",
+            "signal": "Industrial demand commentary",
+            "targetMetric": "EX_REVENUE_Q3",
+            "role": "modifier",
+            "hypothesis": "Current demand commentary helps interpret the guidance range without false precision.",
+            "expectedDirection": "up",
+            "targetPeriod": "FY2026Q3",
+            "units": "qualitative",
+            "importance": "secondary",
+            "resolver": "resolve_qualitative_modifier",
+            "evidenceRequired": ["current management commentary"],
+            "combinationMethod": "range_selection_context",
+            "freshnessRequirement": "current target-period evidence",
+            "correlationGroup": "industrial_demand",
+            "status": "pending",
+        }
+        scenario = {
+            "id": "tariff_trigger",
+            "signal": "Tariff enactment",
+            "targetMetric": "EX_REVENUE_Q3",
+            "role": "scenario_trigger",
+            "hypothesis": "A tariff enacted in the target period creates a conditional downside.",
+            "expectedDirection": "down",
+            "targetPeriod": "FY2026Q3",
+            "units": "USDm",
+            "importance": "secondary",
+            "resolver": "resolve_scenario_trigger",
+            "evidenceRequired": ["tariff proposal and exposure estimate"],
+            "combinationMethod": "conditional_additive_scenario",
+            "freshnessRequirement": "effective in target period",
+            "correlationGroup": "tariff_exposure",
+            "status": "pending",
+        }
         data = {
             "schemaVersion": "1.0",
             "company": {
@@ -108,7 +149,7 @@ class ForecastEngineTests(unittest.TestCase):
                     "accountingBasis": "reported",
                 }
             ],
-            "signalMap": [anchor, demand_driver, backlog_driver],
+            "signalMap": [anchor, demand_driver, backlog_driver, modifier, scenario],
         }
         profile_path = self.root / "profile.json"
         profile_path.write_text(json.dumps(data), encoding="utf-8")
@@ -165,6 +206,39 @@ class ForecastEngineTests(unittest.TestCase):
         self.assertEqual(result.driver_adjustment, Decimal("0"))
         self.assertEqual(len(result.rejected), 2)
         self.assertTrue(all(item.reason_code == "CORRELATED_SIGNAL_CONFLICT" for item in result.rejected))
+
+    def test_keeps_qualitative_modifier_out_of_arithmetic_and_scenario_conditional(self) -> None:
+        modifier = resolve_qualitative_modifier(
+            self.profile,
+            signal_id="industrial_demand_commentary",
+            source_id="filing",
+            exact_quote=MODIFIER_QUOTE,
+            locator="Demand commentary",
+            assessment="Supports the upper half of management's range, but has no calibrated weight.",
+            period="FY2026Q3",
+        )
+        scenario = resolve_scenario_trigger(
+            self.profile,
+            signal_id="tariff_trigger",
+            source_id="filing",
+            exact_quote=SCENARIO_QUOTE,
+            locator="Risk factors",
+            condition="Tariff is enacted before the target quarter closes.",
+            adjustment="-100",
+            units="USDm",
+            period="FY2026Q3",
+            calculation="verified exposure estimate = -100 USDm",
+        )
+
+        result = compile_forecast(self.profile, "EX_REVENUE_Q3", [self.anchor, modifier, scenario])
+
+        self.assertEqual(result.base_forecast, Decimal("3900"))
+        self.assertEqual(result.driver_adjustment, Decimal("0"))
+        self.assertEqual(result.modifiers, (modifier,))
+        self.assertEqual(len(result.scenarios), 1)
+        self.assertEqual(result.scenarios[0].forecast, Decimal("3800"))
+        self.assertEqual(result.scenarios[0].condition, "Tariff is enacted before the target quarter closes.")
+        self.assertIn("- 100", result.scenarios[0].formula)
 
 
 if __name__ == "__main__":
