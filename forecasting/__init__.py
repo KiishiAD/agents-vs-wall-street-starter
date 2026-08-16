@@ -4,6 +4,7 @@ from .contracts import (
     EffectKind,
     EvidenceProvenance,
     ForecastResult,
+    ForecastScenario,
     MetricDefinition,
     NumericRange,
     ObservationDecision,
@@ -19,6 +20,8 @@ from .resolvers import (
     ObservationValidationError,
     resolve_explicit_driver,
     resolve_management_guidance,
+    resolve_qualitative_modifier,
+    resolve_scenario_trigger,
 )
 
 __all__ = [
@@ -27,6 +30,7 @@ __all__ = [
     "EffectKind",
     "EvidenceProvenance",
     "ForecastResult",
+    "ForecastScenario",
     "ForecastValidationError",
     "MetricDefinition",
     "NumericRange",
@@ -42,4 +46,6 @@ __all__ = [
     "compile_forecast",
     "resolve_explicit_driver",
     "resolve_management_guidance",
+    "resolve_qualitative_modifier",
+    "resolve_scenario_trigger",
 ]

@@ -110,6 +110,7 @@ def resolve_management_guidance(
         evidence_quality=evidence_quality,
         freshness=freshness,
         calculation=f"range({low_value}, {high_value})",
+        condition=None,
     )
 
 
@@ -159,4 +160,103 @@ def resolve_explicit_driver(
         evidence_quality=evidence_quality,
         freshness=freshness,
         calculation=calculation.strip(),
+        condition=None,
+    )
+
+
+def resolve_qualitative_modifier(
+    profile: CompanyProfile,
+    *,
+    signal_id: str,
+    source_id: str,
+    exact_quote: str,
+    locator: str,
+    assessment: str,
+    period: str,
+    evidence_quality: str = "medium",
+    freshness: str = "current",
+) -> SignalObservation:
+    signal = profile.signals.get(signal_id)
+    if signal is None:
+        raise ObservationValidationError(f"unknown signal {signal_id}")
+    if signal.role is not SignalRole.MODIFIER:
+        raise ObservationValidationError(f"signal {signal_id} is not a qualitative modifier")
+    if signal.resolver != "resolve_qualitative_modifier":
+        raise ObservationValidationError(f"signal {signal_id} does not use qualitative-modifier resolver")
+    if signal.combination_method != "range_selection_context":
+        raise ObservationValidationError(f"signal {signal_id} does not define non-numeric range context")
+    if period != signal.target_period:
+        raise ObservationValidationError("observation period does not match signal target period")
+    if not assessment.strip():
+        raise ObservationValidationError("qualitative assessment is required")
+    source = profile.sources.get(source_id)
+    if source is None:
+        raise ObservationValidationError(f"unknown source {source_id}")
+    provenance = _verified_provenance(source, exact_quote=exact_quote, locator=locator)
+    return SignalObservation(
+        signal_id=signal.signal_id,
+        target_metric_id=signal.target_metric_id,
+        role=signal.role,
+        period=period,
+        units=signal.units,
+        effect_kind=EffectKind.QUALITATIVE,
+        value=assessment.strip(),
+        provenance=provenance,
+        evidence_quality=evidence_quality,
+        freshness=freshness,
+        calculation="not quantified; context only",
+        condition=None,
+    )
+
+
+def resolve_scenario_trigger(
+    profile: CompanyProfile,
+    *,
+    signal_id: str,
+    source_id: str,
+    exact_quote: str,
+    locator: str,
+    condition: str,
+    adjustment: str | int | Decimal,
+    units: str,
+    period: str,
+    calculation: str,
+    evidence_quality: str = "medium",
+    freshness: str = "current",
+) -> SignalObservation:
+    signal = profile.signals.get(signal_id)
+    if signal is None:
+        raise ObservationValidationError(f"unknown signal {signal_id}")
+    if signal.role is not SignalRole.SCENARIO_TRIGGER:
+        raise ObservationValidationError(f"signal {signal_id} is not a scenario trigger")
+    if signal.resolver != "resolve_scenario_trigger":
+        raise ObservationValidationError(f"signal {signal_id} does not use scenario-trigger resolver")
+    if signal.combination_method != "conditional_additive_scenario":
+        raise ObservationValidationError(f"signal {signal_id} does not define a conditional scenario")
+    if period != signal.target_period:
+        raise ObservationValidationError("observation period does not match signal target period")
+    if units != signal.units:
+        raise ObservationValidationError("observation units do not match signal units")
+    if not condition.strip():
+        raise ObservationValidationError("scenario condition is required")
+    if not calculation.strip():
+        raise ObservationValidationError("scenario calculation is required")
+    source = profile.sources.get(source_id)
+    if source is None:
+        raise ObservationValidationError(f"unknown source {source_id}")
+    value = _decimal(adjustment, "adjustment")
+    provenance = _verified_provenance(source, exact_quote=exact_quote, locator=locator)
+    return SignalObservation(
+        signal_id=signal.signal_id,
+        target_metric_id=signal.target_metric_id,
+        role=signal.role,
+        period=period,
+        units=units,
+        effect_kind=EffectKind.SCENARIO_ADJUSTMENT,
+        value=value,
+        provenance=provenance,
+        evidence_quality=evidence_quality,
+        freshness=freshness,
+        calculation=calculation.strip(),
+        condition=condition.strip(),
     )

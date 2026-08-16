@@ -8,6 +8,7 @@ from .contracts import (
     CompanyProfile,
     EffectKind,
     ForecastResult,
+    ForecastScenario,
     NumericRange,
     ObservationDecision,
     SignalObservation,
@@ -60,6 +61,8 @@ def _validate_observation(
     expected_effect = {
         SignalRole.ANCHOR: EffectKind.SET_RANGE,
         SignalRole.DRIVER: EffectKind.ADDITIVE,
+        SignalRole.MODIFIER: EffectKind.QUALITATIVE,
+        SignalRole.SCENARIO_TRIGGER: EffectKind.SCENARIO_ADJUSTMENT,
     }.get(signal.role)
     if expected_effect is not None and observation.effect_kind is not expected_effect:
         return _rejection(observation, "EFFECT_KIND_MISMATCH", "Observation effect is not allowed for this role.")
@@ -144,6 +147,34 @@ def compile_forecast(
         )
         for item in accepted_candidates
     )
+    modifiers = tuple(item for item in accepted_candidates if item.role is SignalRole.MODIFIER)
+    scenarios: list[ForecastScenario] = []
+    for observation in accepted_candidates:
+        if observation.role is not SignalRole.SCENARIO_TRIGGER:
+            continue
+        if not isinstance(observation.value, Decimal) or not observation.condition:
+            raise ForecastValidationError("accepted scenario must contain a Decimal adjustment and condition")
+        scenario_forecast = base_forecast + observation.value
+        scenario_range = NumericRange(
+            low=base_range.low + observation.value,
+            high=base_range.high + observation.value,
+        )
+        scenario_operator = "+" if observation.value >= 0 else "-"
+        scenario_amount = abs(observation.value)
+        scenarios.append(
+            ForecastScenario(
+                signal_id=observation.signal_id,
+                condition=observation.condition,
+                adjustment=observation.value,
+                range=scenario_range,
+                forecast=scenario_forecast,
+                formula=(
+                    f"{_format_decimal(base_forecast)} {scenario_operator} "
+                    f"{_format_decimal(scenario_amount)} = {_format_decimal(scenario_forecast)} {metric.units}"
+                ),
+                provenance=observation.provenance,
+            )
+        )
     return ForecastResult(
         metric_id=metric.metric_id,
         period=metric.target_period,
@@ -155,4 +186,6 @@ def compile_forecast(
         formula=formula,
         accepted=accepted,
         rejected=tuple(rejected),
+        modifiers=modifiers,
+        scenarios=tuple(scenarios),
     )

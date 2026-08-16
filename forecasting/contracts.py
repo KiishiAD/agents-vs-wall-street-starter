@@ -118,6 +118,7 @@ class SignalObservation:
     evidence_quality: str
     freshness: str
     calculation: str
+    condition: str | None
 
 
 @dataclass(frozen=True)
@@ -126,6 +127,17 @@ class ObservationDecision:
     accepted: bool
     reason_code: str
     explanation: str
+
+
+@dataclass(frozen=True)
+class ForecastScenario:
+    signal_id: str
+    condition: str
+    adjustment: Decimal
+    range: NumericRange
+    forecast: Decimal
+    formula: str
+    provenance: EvidenceProvenance
 
 
 @dataclass(frozen=True)
@@ -140,6 +152,8 @@ class ForecastResult:
     formula: str
     accepted: tuple[ObservationDecision, ...]
     rejected: tuple[ObservationDecision, ...]
+    modifiers: tuple[SignalObservation, ...]
+    scenarios: tuple[ForecastScenario, ...]
 
 
 @dataclass(frozen=True)
