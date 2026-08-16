@@ -8,3 +8,6 @@ research/
 !.env.example
 entry.json
 submission/*.xlsx
+
+# agent data caches
+scripts/data/.cache_*/
