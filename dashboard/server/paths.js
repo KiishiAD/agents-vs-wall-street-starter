@@ -9,6 +9,9 @@ export const COMPANIES_DIR = path.join(DATA_DIR, "companies");
 // Source-backed company profiles live here (committed, independent of data/).
 export const PROFILES_DIR = path.join(ROOT, "server", "profiles");
 export const profileFile = (slug) => path.join(PROFILES_DIR, `${slug}.json`);
+// Forecast decision traces (engine receipts) — committed, independent of data/.
+export const TRACES_DIR = path.join(ROOT, "server", "traces");
+export const traceFile = (slug) => path.join(TRACES_DIR, `${slug}.json`);
 
 export const companyDir = (slug) => path.join(COMPANIES_DIR, slug);
 export const companyFile = (slug) => path.join(companyDir(slug), "company.json");

@@ -107,15 +107,35 @@ def build_run_receipt(
     }
 
 
+def build_pipeline_receipt(
+    profile: CompanyProfile,
+    result: ForecastResult,
+    challenge: ChallengeReport,
+    pipeline: Any,
+) -> dict[str, Any]:
+    """A run receipt enriched with the multi-agent pipeline trace.
+
+    Keeps every key `build_run_receipt` emits (so existing consumers keep
+    working) and adds a `pipeline` block describing the four agent stages.
+    """
+    payload = build_run_receipt(profile, result, challenge)
+    payload["pipeline"] = _jsonable(pipeline)
+    return payload
+
+
 def write_run_receipt(
     profile: CompanyProfile,
     result: ForecastResult,
     challenge: ChallengeReport,
     path: str | Path,
+    pipeline: Any | None = None,
 ) -> Path:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    payload = build_run_receipt(profile, result, challenge)
+    if pipeline is None:
+        payload = build_run_receipt(profile, result, challenge)
+    else:
+        payload = build_pipeline_receipt(profile, result, challenge, pipeline)
     destination.write_text(
         json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",

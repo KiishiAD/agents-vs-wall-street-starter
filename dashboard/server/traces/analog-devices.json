@@ -1,0 +1,578 @@
+{
+  "challenge": {
+    "issues": [
+      {
+        "code": "MISSING_SIGNAL",
+        "message": "Signal 'Target-period tariff exposure' has no current observation.",
+        "severity": "warning",
+        "signalId": "adi_tariff_exposure"
+      }
+    ],
+    "passed": true
+  },
+  "company": {
+    "currency": "USD",
+    "fiscalCalendar": "Fiscal quarters use ADI's 52/53-week reporting calendar; FY2026Q2 ended 2026-05-02.",
+    "id": "ADI",
+    "name": "Analog Devices, Inc.",
+    "ticker": "ADI"
+  },
+  "compilerVersion": "0.1.0",
+  "decisions": {
+    "accepted": [
+      {
+        "accepted": true,
+        "explanation": "Observation passed the declared signal and provenance checks.",
+        "observation": {
+          "calculation": "range(3800, 4000)",
+          "condition": null,
+          "effectKind": "set_range",
+          "evidenceQuality": "high",
+          "freshness": "current",
+          "period": "FY2026Q3",
+          "provenance": {
+            "exactQuote": "For the third quarter of fiscal 2026, we are forecasting revenue of $3.9 billion, +/- $100 million.",
+            "localPath": "challenge/offline-data/analog-devices/filings/2026-05-20__adi-us-20260520-q2-8k__1040581.md",
+            "locator": "Outlook for the Third Quarter of Fiscal Year 2026, first paragraph",
+            "publishedAt": "2026-05-20",
+            "publisher": "Analog Devices, Inc.",
+            "sourceDocumentType": "SEC_filed_earnings_release",
+            "sourceId": "adi-fy2026q2-earnings-release",
+            "sourceSha256": "9211a6356359da9588277f283b25b55b2a15e5ba6dde6f69e91934f701db5db8",
+            "sourceTitle": "Fiscal Second Quarter Financial Results and Third Quarter Outlook",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/6281/000000628126000050/adi2q26exhibit991earnings.htm"
+          },
+          "role": "anchor",
+          "signalId": "adi_revenue_guidance",
+          "targetMetricId": "ADI_REVENUE_FY2026Q3",
+          "units": "USDm",
+          "value": {
+            "high": "4000",
+            "low": "3800"
+          }
+        },
+        "reasonCode": "ACCEPTED"
+      },
+      {
+        "accepted": true,
+        "explanation": "Observation passed the declared signal and provenance checks.",
+        "observation": {
+          "calculation": "not quantified; context only",
+          "condition": null,
+          "effectKind": "qualitative",
+          "evidenceQuality": "medium",
+          "freshness": "current",
+          "period": "FY2026Q3",
+          "provenance": {
+            "exactQuote": "We continued to see growing demand in the second quarter with record bookings across our B2B markets of Industrial, Automotive, and Communications",
+            "localPath": "challenge/offline-data/analog-devices/filings/2026-05-20__adi-us-20260520-q2-8k__1040581.md",
+            "locator": "Management quotations, CFO statement",
+            "publishedAt": "2026-05-20",
+            "publisher": "Analog Devices, Inc.",
+            "sourceDocumentType": "SEC_filed_earnings_release",
+            "sourceId": "adi-fy2026q2-earnings-release",
+            "sourceSha256": "9211a6356359da9588277f283b25b55b2a15e5ba6dde6f69e91934f701db5db8",
+            "sourceTitle": "Fiscal Second Quarter Financial Results and Third Quarter Outlook",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/6281/000000628126000050/adi2q26exhibit991earnings.htm"
+          },
+          "role": "modifier",
+          "signalId": "adi_b2b_bookings",
+          "targetMetricId": "ADI_REVENUE_FY2026Q3",
+          "units": "qualitative",
+          "value": "Bookings are constructive, but the release does not provide a calibrated revenue increment."
+        },
+        "reasonCode": "ACCEPTED"
+      },
+      {
+        "accepted": true,
+        "explanation": "Observation passed the declared signal and provenance checks.",
+        "observation": {
+          "calculation": "not quantified; context only",
+          "condition": null,
+          "effectKind": "qualitative",
+          "evidenceQuality": "medium",
+          "freshness": "current",
+          "period": "FY2026Q3",
+          "provenance": {
+            "exactQuote": "These positive demand signals are reflected in our outlook for continued strong growth in the third quarter.",
+            "localPath": "challenge/offline-data/analog-devices/filings/2026-05-20__adi-us-20260520-q2-8k__1040581.md",
+            "locator": "Management quotations, CFO statement",
+            "publishedAt": "2026-05-20",
+            "publisher": "Analog Devices, Inc.",
+            "sourceDocumentType": "SEC_filed_earnings_release",
+            "sourceId": "adi-fy2026q2-earnings-release",
+            "sourceSha256": "9211a6356359da9588277f283b25b55b2a15e5ba6dde6f69e91934f701db5db8",
+            "sourceTitle": "Fiscal Second Quarter Financial Results and Third Quarter Outlook",
+            "sourceUrl": "https://www.sec.gov/Archives/edgar/data/6281/000000628126000050/adi2q26exhibit991earnings.htm"
+          },
+          "role": "modifier",
+          "signalId": "adi_q3_demand_outlook",
+          "targetMetricId": "ADI_REVENUE_FY2026Q3",
+          "units": "qualitative",
+          "value": "Management expects continued strong Q3 growth; retain as range context only."
+        },
+        "reasonCode": "ACCEPTED"
+      }
+    ],
+    "rejected": []
+  },
+  "forecast": {
+    "anchorRange": {
+      "high": "4000",
+      "low": "3800"
+    },
+    "baseForecast": "3900",
+    "baseRange": {
+      "high": "4000",
+      "low": "3800"
+    },
+    "driverAdjustment": "0",
+    "formula": "midpoint(3800, 4000) + 0 = 3900 USDm",
+    "modifiers": [
+      {
+        "calculation": "not quantified; context only",
+        "condition": null,
+        "effectKind": "qualitative",
+        "evidenceQuality": "medium",
+        "freshness": "current",
+        "period": "FY2026Q3",
+        "provenance": {
+          "exactQuote": "We continued to see growing demand in the second quarter with record bookings across our B2B markets of Industrial, Automotive, and Communications",
+          "localPath": "challenge/offline-data/analog-devices/filings/2026-05-20__adi-us-20260520-q2-8k__1040581.md",
+          "locator": "Management quotations, CFO statement",
+          "publishedAt": "2026-05-20",
+          "publisher": "Analog Devices, Inc.",
+          "sourceDocumentType": "SEC_filed_earnings_release",
+          "sourceId": "adi-fy2026q2-earnings-release",
+          "sourceSha256": "9211a6356359da9588277f283b25b55b2a15e5ba6dde6f69e91934f701db5db8",
+          "sourceTitle": "Fiscal Second Quarter Financial Results and Third Quarter Outlook",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/6281/000000628126000050/adi2q26exhibit991earnings.htm"
+        },
+        "role": "modifier",
+        "signalId": "adi_b2b_bookings",
+        "targetMetricId": "ADI_REVENUE_FY2026Q3",
+        "units": "qualitative",
+        "value": "Bookings are constructive, but the release does not provide a calibrated revenue increment."
+      },
+      {
+        "calculation": "not quantified; context only",
+        "condition": null,
+        "effectKind": "qualitative",
+        "evidenceQuality": "medium",
+        "freshness": "current",
+        "period": "FY2026Q3",
+        "provenance": {
+          "exactQuote": "These positive demand signals are reflected in our outlook for continued strong growth in the third quarter.",
+          "localPath": "challenge/offline-data/analog-devices/filings/2026-05-20__adi-us-20260520-q2-8k__1040581.md",
+          "locator": "Management quotations, CFO statement",
+          "publishedAt": "2026-05-20",
+          "publisher": "Analog Devices, Inc.",
+          "sourceDocumentType": "SEC_filed_earnings_release",
+          "sourceId": "adi-fy2026q2-earnings-release",
+          "sourceSha256": "9211a6356359da9588277f283b25b55b2a15e5ba6dde6f69e91934f701db5db8",
+          "sourceTitle": "Fiscal Second Quarter Financial Results and Third Quarter Outlook",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/6281/000000628126000050/adi2q26exhibit991earnings.htm"
+        },
+        "role": "modifier",
+        "signalId": "adi_q3_demand_outlook",
+        "targetMetricId": "ADI_REVENUE_FY2026Q3",
+        "units": "qualitative",
+        "value": "Management expects continued strong Q3 growth; retain as range context only."
+      }
+    ],
+    "period": "FY2026Q3",
+    "scenarios": [],
+    "units": "USDm"
+  },
+  "informationCutoff": "2026-08-16T17:15:00+01:00",
+  "metric": {
+    "accountingBasis": "reported",
+    "metricId": "ADI_REVENUE_FY2026Q3",
+    "name": "Revenue",
+    "targetPeriod": "FY2026Q3",
+    "units": "USDm"
+  },
+  "pipeline": {
+    "analyst": {
+      "agreement": "3/3 analysts agree on 3900 USDm",
+      "consensusForecast": "3900",
+      "opinions": [
+        {
+          "baseForecast": "3900",
+          "index": 0,
+          "reviewNote": "Reasoning + evidence chain checks out; anchor and drivers trace to source. (1 non-blocking warning(s) noted.)",
+          "reviewPassed": true
+        },
+        {
+          "baseForecast": "3900",
+          "index": 1,
+          "reviewNote": "Reasoning + evidence chain checks out; anchor and drivers trace to source. (1 non-blocking warning(s) noted.)",
+          "reviewPassed": true
+        },
+        {
+          "baseForecast": "3900",
+          "index": 2,
+          "reviewNote": "Reasoning + evidence chain checks out; anchor and drivers trace to source. (1 non-blocking warning(s) noted.)",
+          "reviewPassed": true
+        }
+      ],
+      "units": "USDm"
+    },
+    "analysts": 3,
+    "extractions": [
+      {
+        "candidates": [
+          {
+            "confidence": "low",
+            "estimate": "~4095 USDm (recalled from a prior guide)",
+            "grounded": false,
+            "index": 0,
+            "inspectorVerdict": "discarded — not grounded in the evidence it read",
+            "reasoning": "Answered from the model's trained knowledge; no extracted quotation supports the number."
+          },
+          {
+            "confidence": "high",
+            "estimate": "3800–4000 USDm (mid 3900)",
+            "grounded": true,
+            "index": 1,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"For the third quarter of fiscal 2026, we are forecasting revenue of $3.9…\""
+          },
+          {
+            "confidence": "high",
+            "estimate": "3800–4000 USDm (mid 3900)",
+            "grounded": true,
+            "index": 2,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"For the third quarter of fiscal 2026, we are forecasting revenue of $3.9…\""
+          },
+          {
+            "confidence": "high",
+            "estimate": "3800–4000 USDm (mid 3900)",
+            "grounded": true,
+            "index": 3,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"For the third quarter of fiscal 2026, we are forecasting revenue of $3.9…\""
+          },
+          {
+            "confidence": "high",
+            "estimate": "3800–4000 USDm (mid 3900)",
+            "grounded": true,
+            "index": 4,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"For the third quarter of fiscal 2026, we are forecasting revenue of $3.9…\""
+          }
+        ],
+        "discarded": 1,
+        "reconciledValue": "3800–4000 USDm (mid 3900)",
+        "role": "anchor",
+        "signal": "Management revenue guidance",
+        "signalId": "adi_revenue_guidance",
+        "status": "resolved",
+        "subagents": 5,
+        "survived": 4
+      },
+      {
+        "candidates": [
+          {
+            "confidence": "low",
+            "estimate": "assigned a numeric weight to qualitative commentary",
+            "grounded": false,
+            "index": 0,
+            "inspectorVerdict": "discarded — not grounded in the evidence it read",
+            "reasoning": "Answered from the model's trained knowledge; no extracted quotation supports the number."
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Bookings are constructive, but the release does not provide a calibrated revenue increment.",
+            "grounded": true,
+            "index": 1,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"We continued to see growing demand in the second quarter with record boo…\""
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Bookings are constructive, but the release does not provide a calibrated revenue increment.",
+            "grounded": true,
+            "index": 2,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"We continued to see growing demand in the second quarter with record boo…\""
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Bookings are constructive, but the release does not provide a calibrated revenue increment.",
+            "grounded": true,
+            "index": 3,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"We continued to see growing demand in the second quarter with record boo…\""
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Bookings are constructive, but the release does not provide a calibrated revenue increment.",
+            "grounded": true,
+            "index": 4,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"We continued to see growing demand in the second quarter with record boo…\""
+          }
+        ],
+        "discarded": 1,
+        "reconciledValue": "Bookings are constructive, but the release does not provide a calibrated revenue increment.",
+        "role": "modifier",
+        "signal": "B2B bookings commentary",
+        "signalId": "adi_b2b_bookings",
+        "status": "resolved",
+        "subagents": 5,
+        "survived": 4
+      },
+      {
+        "candidates": [
+          {
+            "confidence": "medium",
+            "estimate": "Management expects continued strong Q3 growth; retain as range context only.",
+            "grounded": true,
+            "index": 0,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"These positive demand signals are reflected in our outlook for continued…\""
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Management expects continued strong Q3 growth; retain as range context only.",
+            "grounded": true,
+            "index": 1,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"These positive demand signals are reflected in our outlook for continued…\""
+          },
+          {
+            "confidence": "low",
+            "estimate": "assigned a numeric weight to qualitative commentary",
+            "grounded": false,
+            "index": 2,
+            "inspectorVerdict": "discarded — not grounded in the evidence it read",
+            "reasoning": "Answered from the model's trained knowledge; no extracted quotation supports the number."
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Management expects continued strong Q3 growth; retain as range context only.",
+            "grounded": true,
+            "index": 3,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"These positive demand signals are reflected in our outlook for continued…\""
+          },
+          {
+            "confidence": "medium",
+            "estimate": "Management expects continued strong Q3 growth; retain as range context only.",
+            "grounded": true,
+            "index": 4,
+            "inspectorVerdict": "kept — value traces to the quoted source",
+            "reasoning": "Extracted from source: \"These positive demand signals are reflected in our outlook for continued…\""
+          }
+        ],
+        "discarded": 1,
+        "reconciledValue": "Management expects continued strong Q3 growth; retain as range context only.",
+        "role": "modifier",
+        "signal": "Q3 demand outlook commentary",
+        "signalId": "adi_q3_demand_outlook",
+        "status": "resolved",
+        "subagents": 5,
+        "survived": 4
+      },
+      {
+        "candidates": [],
+        "discarded": 0,
+        "reconciledValue": "no current observation before cutoff",
+        "role": "scenario_trigger",
+        "signal": "Target-period tariff exposure",
+        "signalId": "adi_tariff_exposure",
+        "status": "missing",
+        "subagents": 0,
+        "survived": 0
+      }
+    ],
+    "initialiser": {
+      "company": "Analog Devices, Inc.",
+      "informationCutoff": "2026-08-16T17:15:00+01:00",
+      "metricsRequested": [
+        "Revenue (FY2026Q3)"
+      ],
+      "note": "Deep-researched the source-backed profile, then requested the signal map for the target metric.",
+      "signalsRequested": [
+        "Management revenue guidance",
+        "B2B bookings commentary",
+        "Q3 demand outlook commentary",
+        "Target-period tariff exposure"
+      ],
+      "ticker": "ADI"
+    },
+    "nextSteps": [
+      "Global-memory feedback: score report quality and feed it back into the initialiser.",
+      "Model sandbox (future work): backtest the estimation model against historic FY2023–2025 and score it."
+    ],
+    "subagentsPerSignal": 5
+  },
+  "profile": {
+    "accountingDefinitions": [
+      {
+        "claim": "The release separates reported and adjusted measures and defines adjusted gross margin and adjusted diluted EPS as non-GAAP measures.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "businessModel": [
+      {
+        "claim": "ADI is a global semiconductor company combining analog, digital, AI and software technologies for intelligent-edge applications.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "cyclicalityAndSeasonality": [
+      {
+        "claim": "ADI identifies semiconductor demand, market conditions and business cycles as factors that can change actual results.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "externalExposures": [
+      {
+        "claim": "The filing identifies tariffs, trade restrictions, geopolitics, demand conditions and supply-chain disruptions as external risks.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "fiscalCalendar": [
+      {
+        "claim": "Fiscal second quarter 2026 ended on 2026-05-02; the requested forecast period is the following fiscal quarter.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "guidanceStyle": [
+      {
+        "claim": "ADI gives Q3 revenue as a point estimate with a plus-or-minus range and gives EPS and margin outlooks on stated reported or adjusted bases.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "productsAndCustomers": [
+      {
+        "claim": "ADI sells sensing, signal-chain, power, connectivity and related semiconductor solutions into industrial, automotive, communications and consumer markets.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "revenueAndCostDrivers": [
+      {
+        "claim": "Management links the Q3 revenue outlook to growing demand and record bookings across Industrial, Automotive and Communications.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ],
+    "segmentsAndGeographies": [
+      {
+        "claim": "The release identifies Industrial, Automotive and Communications as B2B end markets and describes ADI as a global semiconductor leader.",
+        "sourceIds": [
+          "adi-fy2026q2-earnings-release"
+        ]
+      }
+    ]
+  },
+  "schemaVersion": "1.0",
+  "signalMap": [
+    {
+      "combinationMethod": "forecast_starting_range",
+      "correlationGroup": "management_guidance",
+      "evidenceRequired": [
+        "latest filed earnings release"
+      ],
+      "expectedDirection": "range",
+      "freshnessRequirement": "latest available guidance before cutoff",
+      "hypothesis": "The latest filed Q3 revenue outlook is the strongest direct starting range.",
+      "importance": "primary",
+      "resolver": "extract_management_guidance",
+      "role": "anchor",
+      "signal": "Management revenue guidance",
+      "signalId": "adi_revenue_guidance",
+      "status": "pending",
+      "targetMetricId": "ADI_REVENUE_FY2026Q3",
+      "targetPeriod": "FY2026Q3",
+      "units": "USDm"
+    },
+    {
+      "combinationMethod": "range_selection_context",
+      "correlationGroup": "b2b_demand",
+      "evidenceRequired": [
+        "current bookings commentary"
+      ],
+      "expectedDirection": "up",
+      "freshnessRequirement": "latest available commentary before cutoff",
+      "hypothesis": "Current bookings commentary helps judge where results may fall inside guidance but has no calibrated standalone weight.",
+      "importance": "secondary",
+      "resolver": "resolve_qualitative_modifier",
+      "role": "modifier",
+      "signal": "B2B bookings commentary",
+      "signalId": "adi_b2b_bookings",
+      "status": "pending",
+      "targetMetricId": "ADI_REVENUE_FY2026Q3",
+      "targetPeriod": "FY2026Q3",
+      "units": "qualitative"
+    },
+    {
+      "combinationMethod": "range_selection_context",
+      "correlationGroup": "b2b_demand",
+      "evidenceRequired": [
+        "current target-period demand outlook"
+      ],
+      "expectedDirection": "up",
+      "freshnessRequirement": "latest available commentary before cutoff",
+      "hypothesis": "Management's target-period demand view contextualizes the revenue range without creating false precision.",
+      "importance": "secondary",
+      "resolver": "resolve_qualitative_modifier",
+      "role": "modifier",
+      "signal": "Q3 demand outlook commentary",
+      "signalId": "adi_q3_demand_outlook",
+      "status": "pending",
+      "targetMetricId": "ADI_REVENUE_FY2026Q3",
+      "targetPeriod": "FY2026Q3",
+      "units": "qualitative"
+    },
+    {
+      "combinationMethod": "conditional_additive_scenario",
+      "correlationGroup": "tariff_exposure",
+      "evidenceRequired": [
+        "effective tariff terms",
+        "target-period revenue exposure"
+      ],
+      "expectedDirection": "down",
+      "freshnessRequirement": "effective during FY2026Q3",
+      "hypothesis": "A tariff should create a numeric scenario only when enactment timing and revenue exposure are both quantified.",
+      "importance": "secondary",
+      "resolver": "resolve_scenario_trigger",
+      "role": "scenario_trigger",
+      "signal": "Target-period tariff exposure",
+      "signalId": "adi_tariff_exposure",
+      "status": "pending",
+      "targetMetricId": "ADI_REVENUE_FY2026Q3",
+      "targetPeriod": "FY2026Q3",
+      "units": "USDm"
+    }
+  ],
+  "sources": [
+    {
+      "documentType": "SEC_filed_earnings_release",
+      "id": "adi-fy2026q2-earnings-release",
+      "localPath": "challenge/offline-data/analog-devices/filings/2026-05-20__adi-us-20260520-q2-8k__1040581.md",
+      "publishedAt": "2026-05-20",
+      "publisher": "Analog Devices, Inc.",
+      "sha256": "9211a6356359da9588277f283b25b55b2a15e5ba6dde6f69e91934f701db5db8",
+      "title": "Fiscal Second Quarter Financial Results and Third Quarter Outlook",
+      "url": "https://www.sec.gov/Archives/edgar/data/6281/000000628126000050/adi2q26exhibit991earnings.htm"
+    }
+  ]
+}

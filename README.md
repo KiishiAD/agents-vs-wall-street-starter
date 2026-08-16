@@ -78,6 +78,47 @@ python3 example.py
 
 The example uses ADI's 20 May 2026 SEC-filed earnings release and writes `build/example-adi-revenue-receipt.json`. The receipt preserves the SEC URL, local corpus path, SHA-256, exact quotation, signal decision and Decimal formula. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the Red/Blue worker workflow and limits.
 
+## One-command run
+
+`run.py` runs the four-agent pipeline (initialiser → signal extractor → analyst consensus) over the deterministic engine and returns the forecast numbers. The numbers you want are declared in `forecasts.json` — each job names a company profile, a target metric and the source-backed observations to resolve — so you configure which figures to produce without touching code.
+
+```bash
+python3 run.py                          # run every configured job, print the numbers
+python3 run.py --company ADI            # filter by ticker / company / job id
+python3 run.py --metric ADI_REVENUE_FY2026Q3
+python3 run.py --json                   # machine-readable values on stdout
+python3 run.py --write-traces           # also refresh each job's dashboard trace
+python3 run.py --workers 4              # run jobs in parallel (default: auto per CPU)
+python3 run.py --retries 3              # retries per step on transient failure
+python3 run.py --config path/to/other.json
+```
+
+Each job writes a full provenance receipt to `build/<job>-receipt.json`. The exit code is non-zero if any run fails its challenge, so `python3 run.py` is safe to gate a submission on.
+
+**Resilience.** Every job runs in isolation and the batch never aborts halfway. A transient error is retried with backoff; a single bad observation (e.g. a quotation that no longer verifies) is dropped so the rest of the signal map still produces a number (a `degraded` run); and any job that still cannot produce a value is recorded as `failed` while the others continue. Jobs run in parallel by default.
+
+### Per-company launchers
+
+`scripts/run/` has a launcher per company plus a parallel `all`:
+
+```bash
+scripts/run/adi.sh          # one company (ADI, HD, HAS, DE)
+scripts/run/adi.sh --json   # flags pass straight through to run.py
+scripts/run/all.sh          # all four in parallel, one process + log each
+```
+
+`scripts/run/all.sh` writes each company's output to `logs/run-<TICKER>-<id>.log`, prints a per-company pass/fail summary and exits non-zero if any run failed. A company with no source-backed profile yet (currently HD, HAS, DE) reports "not configured yet" and exits cleanly, so the launchers are ready the moment each profile is wired into `forecasts.json`.
+
+## Parallel tests
+
+`scripts/test_parallel.py` runs each test module in its own subprocess concurrently — one part per worker — for fast feedback and isolation:
+
+```bash
+python3 scripts/test_parallel.py                 # all modules, one worker each
+python3 scripts/test_parallel.py --workers 4
+python3 scripts/test_parallel.py test_pipeline test_run   # a subset
+```
+
 Run the compiler tests with:
 
 ```bash

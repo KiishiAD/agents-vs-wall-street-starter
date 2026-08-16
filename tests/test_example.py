@@ -14,7 +14,7 @@ class ExampleRunTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             output = Path(temp_dir) / "adi-receipt.json"
 
-            result, report = example.run(output)
+            result, report, pipeline = example.run(output)
 
             self.assertEqual(result.base_range.low, Decimal("3800"))
             self.assertEqual(result.base_forecast, Decimal("3900"))
@@ -31,6 +31,17 @@ class ExampleRunTests(unittest.TestCase):
                 "we are forecasting revenue of $3.9 billion",
                 receipt["decisions"]["accepted"][0]["observation"]["provenance"]["exactQuote"],
             )
+
+            # The pipeline trace records the four agent stages and reconciles to
+            # the same deterministic number the engine produced.
+            self.assertEqual(pipeline.analyst.consensus_forecast, "3900")
+            self.assertEqual(pipeline.subagents_per_signal, 5)
+            self.assertTrue(all(e.survived >= 1 for e in pipeline.extractions if e.status == "resolved"))
+            self.assertTrue(any(e.discarded >= 1 for e in pipeline.extractions))
+            block = receipt["pipeline"]
+            self.assertEqual(block["initialiser"]["ticker"], "ADI")
+            self.assertEqual(block["analyst"]["consensusForecast"], "3900")
+            self.assertEqual(len(block["nextSteps"]), 2)
 
 
 if __name__ == "__main__":
