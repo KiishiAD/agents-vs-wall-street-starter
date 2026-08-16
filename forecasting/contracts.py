@@ -1,0 +1,86 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import date, datetime
+from enum import Enum
+from pathlib import Path
+from types import MappingProxyType
+from typing import Mapping
+
+
+class SignalRole(str, Enum):
+    CONSTRAINT = "constraint"
+    ANCHOR = "anchor"
+    DRIVER = "driver"
+    MODIFIER = "modifier"
+    SCENARIO_TRIGGER = "scenario_trigger"
+
+
+@dataclass(frozen=True)
+class Company:
+    company_id: str
+    name: str
+    ticker: str
+    currency: str
+    fiscal_calendar: str
+
+
+@dataclass(frozen=True)
+class SourceDocument:
+    source_id: str
+    publisher: str
+    title: str
+    document_type: str
+    published_at: date | datetime
+    url: str
+    local_path: Path
+    sha256: str
+
+
+@dataclass(frozen=True)
+class SourcedClaim:
+    claim: str
+    source_ids: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class MetricDefinition:
+    metric_id: str
+    name: str
+    units: str
+    target_period: str
+    accounting_basis: str
+
+
+@dataclass(frozen=True)
+class SignalDefinition:
+    signal_id: str
+    signal: str
+    target_metric_id: str
+    role: SignalRole
+    hypothesis: str
+    expected_direction: str
+    target_period: str
+    units: str
+    importance: str
+    resolver: str
+    evidence_required: tuple[str, ...]
+    combination_method: str
+    freshness_requirement: str
+    correlation_group: str
+    status: str
+
+
+@dataclass(frozen=True)
+class CompanyProfile:
+    schema_version: str
+    company: Company
+    information_cutoff: datetime
+    sources: Mapping[str, SourceDocument]
+    profile_sections: Mapping[str, tuple[SourcedClaim, ...]]
+    metrics: Mapping[str, MetricDefinition]
+    signals: Mapping[str, SignalDefinition]
+
+    @staticmethod
+    def immutable_mapping(values: dict) -> Mapping:
+        return MappingProxyType(values)
