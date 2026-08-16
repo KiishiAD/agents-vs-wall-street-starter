@@ -127,9 +127,14 @@ def _run_job(
     warnings = sum(1 for i in challenge.issues if i.severity == "warning")
     errors = sum(1 for i in challenge.issues if i.severity == "error")
     discarded = sum(e.discarded for e in pipeline.extractions)
+    search = pipeline.evidence_search
     return {
         "id": job_id,
         "status": "degraded" if dropped else "ok",
+        "searchProvider": search.get("provider"),
+        "searchMode": search.get("mode"),
+        "searchQueries": len(search.get("queries", ())),
+        "searchHits": sum(q.get("results", 0) for q in search.get("queries", ())),
         "company": profile.company.name,
         "ticker": profile.company.ticker,
         "metric": result.metric_id,
@@ -241,6 +246,8 @@ def _print_human(rows: list[dict[str, Any]]) -> None:
         print(f"  downside / base / upside : {r['downside']} / {r['base']} / {r['upside']} {r['units']}")
         print(f"  formula                  : {r['formula']}")
         print(f"  consensus                : {r['consensus']} {r['units']}  ({r['agreement']})")
+        hits = f", {r['searchHits']} hits" if r.get("searchHits") else ""
+        print(f"  evidence search          : {r.get('searchProvider')} · {r.get('searchQueries')} quer{'y' if r.get('searchQueries')==1 else 'ies'}{hits} ({r.get('searchMode')})")
         print(f"  extractor                : {r['subagentsPerSignal']} sub-agents/signal, {r['biasedDiscarded']} biased discarded")
         for d in r.get("droppedSignals", []):
             print(f"  healed (dropped signal)  : {d['signalId']} — {d['reason']}")

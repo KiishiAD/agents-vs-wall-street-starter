@@ -55,6 +55,9 @@ class PipelineTests(unittest.TestCase):
         )
         result, challenge, trace = run_result.result, run_result.challenge, run_result.trace
         self.assertTrue(challenge.passed)
+        # The signal extractor runs a Tavily web-search stage (offline fallback here).
+        self.assertEqual(trace.evidence_search["provider"], "tavily")
+        self.assertTrue(trace.evidence_search["queries"])
         # The initialiser built the profile as a pipeline output.
         self.assertGreater(trace.initialiser.sources_verified, 0)
         self.assertGreater(trace.initialiser.profile_sections_built, 0)

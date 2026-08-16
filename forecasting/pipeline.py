@@ -39,6 +39,7 @@ from .resolvers import (
     resolve_qualitative_modifier,
     resolve_scenario_trigger,
 )
+from .search import TavilyClient, evidence_query
 
 DEFAULT_SUBAGENTS = 5
 DEFAULT_ANALYSTS = 3
@@ -115,6 +116,7 @@ class PipelineTrace:
     subagents_per_signal: int
     analysts: int
     initialiser: InitialiserReport
+    evidence_search: dict
     extractions: tuple[SignalExtraction, ...]
     analyst: AnalystReport
     dropped_signals: tuple[dict, ...]
@@ -262,6 +264,34 @@ def run_initialiser(profile: CompanyProfile, metric_id: str) -> InitialiserRepor
     )
 
 
+def run_evidence_search(
+    profile: CompanyProfile, metric_id: str, client: TavilyClient
+) -> dict:
+    """Each sub-agent web-searches for its signal's evidence (Tavily). Offline,
+    it records the query it would run and falls back to the frozen corpus, so the
+    web-search stage is always in the trace without breaking determinism."""
+    queries: list[dict] = []
+    for signal in profile.signals.values():
+        if signal.target_metric_id != metric_id:
+            continue
+        query = evidence_query(profile.company.name, signal.signal, signal.target_period)
+        results = client.search(query) if client.enabled else []
+        queries.append(
+            {
+                "signal": signal.signal,
+                "query": query,
+                "results": len(results),
+                "used": bool(client.enabled),
+            }
+        )
+    return {
+        "provider": "tavily",
+        "enabled": bool(client.enabled),
+        "mode": "web-search" if client.enabled else "frozen-corpus fallback (offline)",
+        "queries": tuple(queries),
+    }
+
+
 def run_signal_extractor(
     profile: CompanyProfile,
     metric_id: str,
@@ -351,6 +381,7 @@ def run_pipeline(
     repository_root: Any = None,
     n_subagents: int = DEFAULT_SUBAGENTS,
     n_analysts: int = DEFAULT_ANALYSTS,
+    search_client: TavilyClient | None = None,
 ) -> PipelineRun:
     """Run the four agent stages end to end.
 
@@ -364,7 +395,9 @@ def run_pipeline(
     profile = build_profile(profile_source, repository_root=repository_root)
     initialiser = run_initialiser(profile, metric_id)
 
-    # Stage 2 — signal extractor resolves the requested signals against it.
+    # Stage 2 — signal extractor: sub-agents web-search (Tavily), then resolve.
+    client = search_client if search_client is not None else TavilyClient()
+    evidence_search = run_evidence_search(profile, metric_id, client)
     observations, dropped = resolve_signal_specs(profile, observation_specs)
 
     result = compile_forecast(profile, metric_id, observations)
@@ -374,6 +407,7 @@ def run_pipeline(
         subagents_per_signal=n_subagents,
         analysts=n_analysts,
         initialiser=initialiser,
+        evidence_search=evidence_search,
         extractions=run_signal_extractor(profile, metric_id, result, n_subagents),
         analyst=run_analyst(result, challenge, n_analysts),
         dropped_signals=tuple(dropped),
