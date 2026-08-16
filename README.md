@@ -68,6 +68,22 @@ less research/HD.md
 
 Use `HD`, `ADI`, `HAS` or `DE` for the four challenge companies. The output contains search leads rather than verified financial history, so check each figure in its cited document. Read [starter/README.md](starter/README.md) for narrower searches and testing instructions.
 
+## Evidence-to-forecast example
+
+The first compiler slice turns a source-backed company profile and metric-specific signal map into a deterministic forecast receipt. It verifies the frozen document hash and exact quotation before any observation can affect a number, keeps qualitative modifiers out of arithmetic and rejects correlated quantitative drivers.
+
+```bash
+python3 example.py
+```
+
+The example uses ADI's 20 May 2026 SEC-filed earnings release and writes `build/example-adi-revenue-receipt.json`. The receipt preserves the SEC URL, local corpus path, SHA-256, exact quotation, signal decision and Decimal formula. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the Red/Blue worker workflow and limits.
+
+Run the compiler tests with:
+
+```bash
+python3 -m unittest discover -s tests -v
+```
+
 ## Repository map
 
 ```text
