@@ -111,6 +111,8 @@ python3 run.py --config path/to/other.json
 
 Each job writes a full provenance receipt to `build/<job>-receipt.json`. The exit code is non-zero if any run fails its challenge, so `python3 run.py` is safe to gate a submission on.
 
+**Agents (Pydantic-AI on OpenAI).** The signal-extractor sub-agents and the analyst reviewers are spawned as Pydantic-AI agents with typed outputs, on `openai:gpt-5.6-sol` (override with `FORECAST_AGENT_MODEL`). Set `OPENAI_API_KEY` to run live agents; with no key they fall back to the deterministic behaviour so offline runs and tests are unchanged. The model only produces reasoning/verdicts — the number is always computed by the deterministic engine. Every receipt carries an `agents` block.
+
 **Evidence search (Tavily).** In the signal-extractor stage each sub-agent web-searches for its signal's evidence via Tavily. Set `TAVILY_API_KEY` to issue live queries; with no key the run falls back to the frozen corpus and records the query it would have run, so the web-search stage is always visible in the trace and the run stays deterministic. Every receipt carries an `evidenceSearch` block.
 
 **Resilience.** Every job runs in isolation and the batch never aborts halfway. A transient error is retried with backoff; a single bad observation (e.g. a quotation that no longer verifies) is dropped so the rest of the signal map still produces a number (a `degraded` run); and any job that still cannot produce a value is recorded as `failed` while the others continue. Jobs run in parallel by default.

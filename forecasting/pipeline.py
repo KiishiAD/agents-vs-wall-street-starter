@@ -40,6 +40,7 @@ from .resolvers import (
     resolve_qualitative_modifier,
     resolve_scenario_trigger,
 )
+from .agents import AgentHarness
 from .search import TavilyClient, evidence_query
 
 DEFAULT_SUBAGENTS = 5
@@ -117,6 +118,7 @@ class AnalystReport:
 class PipelineTrace:
     subagents_per_signal: int
     analysts: int
+    agents: dict
     initialiser: InitialiserReport
     evidence_search: dict
     extractions: tuple[SignalExtraction, ...]
@@ -167,17 +169,35 @@ def _biased_label(observation: SignalObservation) -> str:
     return "assigned a numeric weight to qualitative commentary"
 
 
-def _candidates(observation: SignalObservation, n: int) -> tuple[SubAgentCandidate, ...]:
+def _candidates(
+    observation: SignalObservation, n: int, harness: AgentHarness | None = None
+) -> tuple[SubAgentCandidate, ...]:
     """Fan out N sub-agents; the reasoning inspector discards biased ones.
 
-    Grounded sub-agents quote the frozen source and converge on the value the
-    resolver already verified. Exactly one sub-agent (deterministically chosen)
-    answers from trained knowledge instead of extracted evidence and is
-    discarded — the mechanic the diagram calls "discard biased agents".
+    When the harness is enabled each grounded sub-agent is a real Pydantic-AI
+    agent turn (spawned concurrently) that reads the quotation and reports its
+    reasoning; otherwise the reasoning is synthesised deterministically. Either
+    way the value is the resolver-verified one, and exactly one sub-agent
+    (deterministically chosen) answers from trained knowledge and is discarded —
+    the mechanic the diagram calls "discard biased agents".
     """
     true_label = _true_value_label(observation)
     biased_index = _seed(observation.signal_id, "bias") % n if n >= 4 else -1
     quote_head = observation.provenance.exact_quote[:72].rstrip()
+
+    grounded_idx = [i for i in range(n) if i != biased_index]
+    reasonings: dict[int, str] = {}
+    if harness is not None and harness.enabled and grounded_idx:
+        prompt = (
+            f'Signal: "{observation.signal_id}". Source quotation: "{observation.provenance.exact_quote}". '
+            f"Extracted value: {true_label}. State what value this supports and whether it is grounded in the quotation."
+        )
+        with ThreadPoolExecutor(max_workers=min(8, len(grounded_idx))) as pool:
+            outputs = list(pool.map(lambda _i: harness.extract(prompt), grounded_idx))
+        for i, out in zip(grounded_idx, outputs):
+            if out is not None:
+                reasonings[i] = out.reasoning
+
     out: list[SubAgentCandidate] = []
     for i in range(n):
         if i == biased_index:
@@ -196,7 +216,7 @@ def _candidates(observation: SignalObservation, n: int) -> tuple[SubAgentCandida
                 SubAgentCandidate(
                     index=i,
                     estimate=true_label,
-                    reasoning=f'Extracted from source: "{quote_head}…"',
+                    reasoning=reasonings.get(i, f'Extracted from source: "{quote_head}…"'),
                     confidence=observation.evidence_quality,
                     grounded=True,
                     inspector_verdict="kept — value traces to the quoted source",
@@ -308,6 +328,7 @@ def run_signal_extractor(
     metric_id: str,
     result: ForecastResult,
     n_subagents: int,
+    harness: AgentHarness | None = None,
 ) -> tuple[SignalExtraction, ...]:
     resolved = {d.observation.signal_id: d.observation for d in result.accepted}
     extractions: list[SignalExtraction] = []
@@ -330,7 +351,7 @@ def run_signal_extractor(
                 )
             )
             continue
-        candidates = _candidates(observation, n_subagents)
+        candidates = _candidates(observation, n_subagents, harness)
         survived = sum(1 for c in candidates if c.grounded)
         extractions.append(
             SignalExtraction(
@@ -352,27 +373,39 @@ def run_analyst(
     result: ForecastResult,
     challenge: ChallengeReport,
     n_analysts: int,
+    harness: AgentHarness | None = None,
     *,
     max_workers: int = 8,
 ) -> AnalystReport:
     """The analyst agent: N analysts each produce an analysis report from the
     extracted data and review its reasoning + evidence chain, then converge on a
-    final report by consensus. The N analysts run CONCURRENTLY (the diagram's
-    parallel analyst columns); ordering and the consensus value are preserved."""
+    final report by consensus. Each analyst is a real Pydantic-AI agent turn when
+    the harness is enabled, otherwise a deterministic review. The N analysts run
+    CONCURRENTLY (the diagram's parallel analyst columns); ordering and the
+    consensus value are preserved."""
     consensus = _format(result.base_forecast)
     warnings = sum(1 for i in challenge.issues if i.severity == "warning")
+    deterministic_note = (
+        "Reasoning + evidence chain checks out; anchor and drivers trace to source."
+        if challenge.passed
+        else "Blocked: an accepted value failed the reasoning/evidence review."
+    )
+    if challenge.passed and warnings:
+        deterministic_note += f" ({warnings} non-blocking warning(s) noted.)"
+    review_prompt = (
+        f"Forecast: {consensus} {result.units} for {result.metric_id}. Formula: {result.formula}. "
+        f"Challenge {'passed' if challenge.passed else 'failed'}. Review whether the evidence chain supports it."
+    )
 
     def analyst(index: int) -> AnalystOpinion:
         # Analysis report based on the extracted data...
         base_forecast = consensus
-        # ...then review the reasoning process + evidence chain.
-        note = (
-            "Reasoning + evidence chain checks out; anchor and drivers trace to source."
-            if challenge.passed
-            else "Blocked: an accepted value failed the reasoning/evidence review."
-        )
-        if challenge.passed and warnings:
-            note += f" ({warnings} non-blocking warning(s) noted.)"
+        # ...then review the reasoning process + evidence chain (spawn an agent if enabled).
+        note = deterministic_note
+        if harness is not None and harness.enabled:
+            output = harness.review(review_prompt)
+            if output is not None:
+                note = output.review
         return AnalystOpinion(
             index=index,
             base_forecast=base_forecast,
@@ -409,6 +442,7 @@ def run_pipeline(
     n_subagents: int = DEFAULT_SUBAGENTS,
     n_analysts: int = DEFAULT_ANALYSTS,
     search_client: TavilyClient | None = None,
+    agent_harness: AgentHarness | None = None,
 ) -> PipelineRun:
     """Run the four agent stages end to end.
 
@@ -424,19 +458,32 @@ def run_pipeline(
 
     # Stage 2 — signal extractor: sub-agents web-search (Tavily), then resolve.
     client = search_client if search_client is not None else TavilyClient()
+    harness = agent_harness if agent_harness is not None else AgentHarness()
     evidence_search = run_evidence_search(profile, metric_id, client)
     observations, dropped = resolve_signal_specs(profile, observation_specs)
 
     result = compile_forecast(profile, metric_id, observations)
     challenge = challenge_forecast(profile, result)
 
+    extractions = run_signal_extractor(profile, metric_id, result, n_subagents, harness)
+    analyst = run_analyst(result, challenge, n_analysts, harness)
+    agents_block = {
+        "harness": "pydantic-ai",
+        "provider": "openai",
+        "model": harness.model,
+        "enabled": harness.enabled,
+        "spawned": harness.spawned,
+        "mode": "live agents" if harness.enabled else "deterministic fallback (offline)",
+    }
+
     trace = PipelineTrace(
         subagents_per_signal=n_subagents,
         analysts=n_analysts,
+        agents=agents_block,
         initialiser=initialiser,
         evidence_search=evidence_search,
-        extractions=run_signal_extractor(profile, metric_id, result, n_subagents),
-        analyst=run_analyst(result, challenge, n_analysts),
+        extractions=extractions,
+        analyst=analyst,
         dropped_signals=tuple(dropped),
         next_steps=(
             "Global-memory feedback: score report quality and feed it back into the initialiser.",
