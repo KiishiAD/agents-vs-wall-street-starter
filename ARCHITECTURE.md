@@ -1,5 +1,71 @@
 # Evidence-to-forecast compiler
 
+> Central development reference — updated 16 August 2026. Keep this file and
+> `architecture/index.html` synchronized with the command used for the final run.
+
+## Integrated system map
+
+The merged repository contains three complementary contributions:
+
+- `COMPANY_PROFILE_SKILL.md` defines the lightweight, repository-first company
+  orientation contract and claim-level provenance policy;
+- `signal_agent/company_research.py`, `tavily.py`, `research_validation.py` and
+  `lookahead.py` implement bounded Tavily discovery, immutable source freezing,
+  deterministic evidence gates and independent look-ahead review; and
+- `pipeline/`, the legacy five-worker report collector and `forecast_input.v1`
+  remain available as the earlier financial-report consensus path and comparison
+  baseline.
+
+The target architecture is:
+
+```text
+four concurrent company lanes: HAS · HD · ADI · DE
+                   │
+        lightweight company profile
+                   │
+       approved metric-specific signal map
+                   │
+    bounded Tavily search/extract + supplied corpus
+                   │
+ immutable sources + manifest + cutoff decisions
+                   │
+ deterministic audit + independent no-web reviewer
+                   │
+             forecast_input.v2
+                   │
+      Decimal forecast compiler + challenge
+                   │
+      exactly three figures per company
+                   │
+ validate → preserve templates → four workbooks
+```
+
+### Current implementation status
+
+| Area | State | Primary interface |
+| --- | --- | --- |
+| Company-profile contract | Implemented | `COMPANY_PROFILE_SKILL.md` |
+| Four-company Tavily candidate research | Implemented | `python3 -m signal_agent.company_research --stage profile` |
+| Approved-signal candidate research | Implemented | `python3 -m signal_agent.company_research --stage signals` |
+| Source freezing, cutoff and manifests | Implemented | `signal_agent/tavily.py` |
+| Profile/signal-map/evidence gates | Implemented library | `signal_agent/research_validation.py` |
+| Independent look-ahead review | Implemented library | `signal_agent/lookahead.py` |
+| Fail-closed v2 construction | Implemented library | `build_forecast_input_v2(...)` |
+| Deterministic compiler | Implemented | `forecasting/` |
+| Final forecast validation and workbook writing | Implemented | `scripts/run.sh` |
+| Autonomous candidate-to-v2 orchestration | Integration still required | no single CLI yet |
+| v2-to-compiler adapter for all 12 figures | Integration still required | no single CLI yet |
+
+`npm run forecast` currently validates existing `evaluation/forecasts.json` and
+writes the four workbooks. It does not run research. `python3 -m pipeline.run`
+currently drives the older v1 collector and expects downstream CLI adapters that
+do not yet exist. Do not describe either command as the complete autonomous v2
+system until those remaining adapters are connected.
+
+Research consensus confidence is useful for report discovery and extraction
+triage, but it is not forecast authority. Only evidence that passes the v2 source,
+cutoff, audit and look-ahead gates may enter the deterministic compiler.
+
 ## Architecture statement
 
 The worker first builds a source-backed company profile, then creates a metric-specific signal map. Each signal defines what evidence is required, how it affects the metric and how it may enter the forecast. Reusable resolver tools collect and normalize those signals before deterministic code combines them into an auditable forecast.
@@ -53,7 +119,7 @@ Weights are forbidden unless the signal map identifies the backtest or historica
 
 ### 3. Resolve the signals
 
-Resolvers search only for approved signals and return typed observations. Every observation carries the source ID, exact quotation, publication time, target period, units and normalized value. The compiler verifies the quotation against the frozen source text and verifies the source hash before accepting it.
+Resolvers search only for approved signals and return typed observations. The Tavily query planner includes the declared signal hypothesis, target metric and period, evidence requirement, units and freshness rule. Search results are leads until selected pages are extracted, frozen locally and assigned immutable source records. Every observation carries the source ID, exact quotation, publication time, target period, units and normalized value. The compiler verifies the quotation against the frozen source text and verifies the source hash before accepting it.
 
 A reusable signal has three levels:
 
@@ -94,6 +160,8 @@ The challenger checks:
 
 A failed signal is rejected with a reason. The forecast retains its declared baseline or anchor rather than inventing an adjustment.
 
+An independent no-web reviewer receives only the frozen-source manifest, supplied excerpts, cutoff, prompt hash, research audit and proposal. It reports unsupported claims and suspected look-ahead using a fixed issue vocabulary. Error findings or an unavailable reviewer block `forecast_input.v2`; deterministic provenance failures block it regardless of the model verdict. The reviewer detects evidence that cannot be reconstructed from supplied sources—it cannot prove what came from model training data.
+
 ## Provenance chain
 
 Every forecast-driving value must preserve this chain:
@@ -121,6 +189,12 @@ Run artifacts are written as JSON next to the forecasts. Submission workbooks re
 Implemented now:
 
 - strict JSON company profiles and signal maps;
+- bounded Tavily search/extract with secret-safe configuration and concurrent company lanes;
+- nine-section profile and approved-signal-only query planning;
+- immutable web source snapshots, canonical manifests, hashes, publication cutoff decisions and exact-quote checks;
+- three-to-seven signal cardinality, one-anchor, role/formula, unit and accounting-basis gates;
+- structured research audits and an independent OpenAI no-web look-ahead reviewer;
+- `forecast_input.v2` blocking on incomplete review, unsupported provenance or non-decimal JSON numbers;
 - source hashes, URLs, exact quotations and cutoff checks;
 - reusable management-guidance and explicit-driver resolvers;
 - deterministic anchor-plus-driver combination using `Decimal`;
@@ -136,7 +210,9 @@ Deliberately excluded from the deterministic critical path:
 - arbitrary model-generated weights;
 - unrestricted LLM arithmetic;
 - a universal financial ontology;
-- a multi-agent swarm.
+- an unrestricted or self-modifying agent swarm.
+
+The older five-worker report-consensus collector remains available for comparison, but agreement and confidence from that path are not forecast authority and do not satisfy the `forecast_input.v2` evidence gates.
 
 ## Guarantees and limits
 

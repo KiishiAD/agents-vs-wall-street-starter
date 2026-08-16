@@ -4,9 +4,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Centurion — Architecture</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root{
       --paper:#faf8f3; --card:#fffdf9; --ink:#2a251f; --ink-soft:#4b443b;
@@ -184,19 +181,19 @@
   <header class="wrap">
     <p class="eyebrow">Agents vs Wall Street</p>
     <h1>An evidence-to-forecast <em>compiler</em></h1>
-    <p class="lede">One reusable forecasting worker, run four times in parallel — one per company. Each builds a
-      source-backed profile, maps the signals that move each metric, resolves them into cited evidence, and combines
-      them with deterministic code into an auditable forecast.</p>
+    <p class="lede">One reusable forecasting worker, run four times in parallel — one per company. Bounded Tavily
+      research freezes admissible web evidence alongside the supplied corpus; deterministic gates then decide what
+      may enter the source-backed profile, signal map and auditable forecast.</p>
     <div class="guardrail">
       <p><b>The rule that keeps it honest.</b> The model may propose structured observations. It may <b>not</b> invent
       sources, choose arbitrary weights, perform forecast arithmetic, or write submission values. A signal moves a
       number only when its evidence and declared transformation pass deterministic validation.</p>
     </div>
     <div class="companies">
-      <div class="chip"><img src="logos/home-depot.png" alt="">Home Depot <span class="tk">HD</span></div>
-      <div class="chip"><img src="logos/analog-devices.svg" alt="">Analog Devices <span class="tk">ADI</span></div>
-      <div class="chip"><img src="logos/hays.png" alt="">Hays plc <span class="tk">HAS</span></div>
-      <div class="chip"><img src="logos/deere.webp" alt="">Deere &amp; Co. <span class="tk">DE</span></div>
+      <div class="chip">Home Depot <span class="tk">HD</span></div>
+      <div class="chip">Analog Devices <span class="tk">ADI</span></div>
+      <div class="chip">Hays plc <span class="tk">HAS</span></div>
+      <div class="chip">Deere &amp; Co. <span class="tk">DE</span></div>
     </div>
   </header>
 
@@ -206,8 +203,8 @@
       <div class="sec-head reveal">
         <p class="eyebrow">How the work fans out</p>
         <h2>One worker, four companies, in parallel</h2>
-        <p>An orchestrator spins up an identical worker per company. Each returns three validated forecasts;
-          deterministic code validates them and writes the submission workbooks.</p>
+        <p>An orchestrator spins up an isolated worker per company. Tavily search and extraction run concurrently,
+          while provenance, cutoff and look-ahead gates fail closed before exactly three forecasts can be returned.</p>
       </div>
 
       <svg class="diagram reveal" viewBox="0 0 960 560" role="img" aria-label="Orchestration diagram">
@@ -240,22 +237,22 @@
         <foreignObject x="360" y="14" width="240" height="60">
           <div xmlns="http://www.w3.org/1999/xhtml" class="node-box node-orch">
             <div class="t">Orchestrator</div>
-            <div class="s">agent plugin · spawns one worker per company</div>
+            <div class="s">four isolated company lanes · bounded concurrency</div>
           </div>
         </foreignObject>
 
         <!-- workers -->
         <foreignObject x="52" y="196" width="176" height="100"><div xmlns="http://www.w3.org/1999/xhtml" class="node-box worker">
-          <div class="top"><img src="logos/home-depot.png" alt=""><div><div class="nm">Home Depot</div><div class="tk">HD · comparable sales</div></div></div>
+          <div class="top"><div><div class="nm">Home Depot</div><div class="tk">HD · comparable sales</div></div></div>
         </div></foreignObject>
         <foreignObject x="292" y="196" width="176" height="100"><div xmlns="http://www.w3.org/1999/xhtml" class="node-box worker">
-          <div class="top"><img src="logos/analog-devices.svg" alt=""><div><div class="nm">Analog Devices</div><div class="tk">ADI · revenue</div></div></div>
+          <div class="top"><div><div class="nm">Analog Devices</div><div class="tk">ADI · revenue</div></div></div>
         </div></foreignObject>
         <foreignObject x="532" y="196" width="176" height="100"><div xmlns="http://www.w3.org/1999/xhtml" class="node-box worker">
-          <div class="top"><img src="logos/hays.png" alt=""><div><div class="nm">Hays plc</div><div class="tk">HAS · net fees</div></div></div>
+          <div class="top"><div><div class="nm">Hays plc</div><div class="tk">HAS · net fees</div></div></div>
         </div></foreignObject>
         <foreignObject x="772" y="196" width="176" height="100"><div xmlns="http://www.w3.org/1999/xhtml" class="node-box worker">
-          <div class="top"><img src="logos/deere.webp" alt=""><div><div class="nm">Deere &amp; Co.</div><div class="tk">DE · op. profit</div></div></div>
+          <div class="top"><div><div class="nm">Deere &amp; Co.</div><div class="tk">DE · op. profit</div></div></div>
         </div></foreignObject>
 
         <!-- 3 forecasts pills -->
@@ -290,13 +287,13 @@
           <div class="stage"><div class="num">2</div><h3>Signal map</h3><div class="team red">Team Red</div>
             <p>Name the 3–7 material signals that could move each metric, each with a declared role and direction.</p></div>
           <div class="stage"><div class="num">3</div><h3>Resolve</h3><div class="team blue">Team Blue</div>
-            <p>Reusable resolvers collect evidence for approved signals and return typed, cited observations.</p></div>
+            <p>Tavily leads are extracted, frozen and hashed; only approved signals return typed, cited observations.</p></div>
           <div class="stage"><div class="num">4</div><h3>Combine</h3><div class="team red">Team Red</div>
             <p>Anchor + approved driver adjustments = base forecast, computed in <span class="mono">Decimal</span>.</p></div>
           <div class="stage"><div class="num">5</div><h3>Scenarios</h3><div class="team red">Team Red</div>
             <p>Low / base / high. Scenario triggers stay out of the base unless their condition actually occurs.</p></div>
           <div class="stage"><div class="num">6</div><h3>Challenge &amp; validate</h3><div class="team ind">Independent</div>
-            <p>A challenger hunts mismatches and double-counting; deterministic code checks numbers, units and format.</p></div>
+            <p>A no-web reviewer hunts look-ahead; deterministic code checks provenance, numbers, units and format.</p></div>
         </div>
       </div>
     </div>
@@ -371,6 +368,9 @@
           <h3><span class="mark y">✓</span> Implemented now</h3>
           <ul>
             <li><span class="mark y">✓</span> Strict JSON company profiles and signal maps</li>
+            <li><span class="mark y">✓</span> Bounded Tavily search/extract across four concurrent company lanes</li>
+            <li><span class="mark y">✓</span> Immutable source snapshots, audit manifests and cutoff enforcement</li>
+            <li><span class="mark y">✓</span> Independent no-web look-ahead review and fail-closed v2 handoff</li>
             <li><span class="mark y">✓</span> Source hashes, URLs, exact quotations and cutoff checks</li>
             <li><span class="mark y">✓</span> Reusable management-guidance and explicit-driver resolvers</li>
             <li><span class="mark y">✓</span> Deterministic anchor-plus-driver combination in <span class="mono">Decimal</span></li>
@@ -387,7 +387,7 @@
             <li><span class="mark n">✕</span> Arbitrary model-generated weights</li>
             <li><span class="mark n">✕</span> Unrestricted LLM arithmetic</li>
             <li><span class="mark n">✕</span> A universal financial ontology</li>
-            <li><span class="mark n">✕</span> A multi-agent swarm</li>
+            <li><span class="mark n">✕</span> An unrestricted or self-modifying agent swarm</li>
           </ul>
         </div>
       </div>

@@ -26,6 +26,8 @@ coverage/
 
 # === Local-only research & agent caches ===
 research/
+research_runs/
+signal_maps/
 scripts/data/.cache_*/
 
 # === Generated submission artifacts ===
@@ -33,3 +35,7 @@ entry.json
 submission/*.xlsx
 
 # Note: logs/run-*.log are intentionally committed (final-run proof — see logs/README.md)
+data/*.db
+signals/
+forecast_inputs/
+forecasts/

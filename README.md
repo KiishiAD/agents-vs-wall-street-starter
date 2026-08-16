@@ -8,6 +8,13 @@ The repository includes a frozen historical corpus of 1,139 filings, call-transc
 
 Your agent should be able to do the research, make the financial judgements and produce completed OpenStocks workbooks with as little manual help as possible.
 
+Install both dependency sets after cloning:
+
+```bash
+npm install
+python3 -m pip install -r requirements.txt
+```
+
 ## What the day is for
 
 1. **Build something real.** Create a repeatable agent that researches companies, makes financial judgements and produces completed forecast workbooks.
@@ -83,6 +90,26 @@ Run the compiler tests with:
 ```bash
 python3 -m unittest discover -s tests -v
 ```
+
+## Tavily company and signal research
+
+Copy `.env.example` to the ignored `.env` file and set `TAVILY_API_KEY`. Set `OPENAI_API_KEY` only when running the independent no-web look-ahead reviewer. Secrets are read from the process or `.env`; they are never written to requests, artifacts or logs.
+
+Research all four company profiles concurrently:
+
+```bash
+npm run research:profiles
+```
+
+This writes timestamped candidate bundles under ignored `research/`. Each selected page is frozen locally with its canonical URL, publication time, Tavily request IDs and SHA-256. Post-cutoff or undated evidence cannot drive a forecast.
+
+After creating validated `signal_maps/<company>.json` files with three to seven approved signals and one anchor per metric, run:
+
+```bash
+npm run research:signals
+```
+
+The second planner searches only evidence declared by approved signals. `signal_agent.research_validation` validates profile coverage, exact quotations, signal formulas, units, accounting basis, decimal-string observations, audit metadata and the independent review before emitting `forecast_input.v2`. The repository skill at `.agents/skills/researching-company-signals/` documents the operator workflow.
 
 ## Repository map
 
