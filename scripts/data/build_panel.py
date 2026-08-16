@@ -565,6 +565,38 @@ def build(data_dir):
     add("de_ppa_operating_profit", ppa["de_ppa_operating_profit"], "target",
         "USDm", "de_segments_modern.csv", "TARGET 3: PPA operating profit, modern-PPA basis")
 
+    # ---- Q4 override from the authoritative corpus 8-Ks -------------------
+    # Deere files no Q4 10-Q, so SEC XBRL carries NO standalone three-month Q4
+    # fact for either target and drv_peers.csv derives Q4 as FY minus Q1+Q2+Q3.
+    # For revenue that is right to ~1 USDm. For diluted EPS it is wrong, because
+    # the diluted share count differs every quarter: FY2025 Q4 derives to 3.92
+    # against an as-reported 3.93, FY2024 Q4 to 4.57 against 4.55. The Q4 8-K
+    # prints both figures and the corpus filings are authoritative, so they win.
+    q4_path = os.path.join(data_dir, "de_q4_actuals_from_8k.csv")
+    n_over = 0
+    if os.path.exists(q4_path):
+        for r in read_tidy(q4_path):
+            col = {"de_net_sales_revenues_total_q4_asreported": "de_net_sales_revenues_total",
+                   "de_eps_diluted_gaap_q4_asreported": "de_eps_diluted_gaap"}.get(r["series_id"])
+            v = fnum(r["value"])
+            if col is None or v is None:
+                continue
+            k = (int(r["fiscal_year"]), r["fiscal_quarter"])
+            if k[0] > FORECAST_ROW[0] or (k[0] == FORECAST_ROW[0]
+                                          and QORDER[k[1]] >= QORDER[FORECAST_ROW[1]]):
+                continue        # never let a Q4 override touch the forecast row
+            old = cols[col].get(k)
+            if old is not None and abs(old - v) > 1e-9:
+                n_over += 1
+                print("  [q4-override] %s %s %s: XBRL-derived %s -> 8-K as-reported %s"
+                      % (col, k[0], k[1], old, v))
+            cols[col][k] = v
+    else:
+        warn("de_q4_actuals_from_8k.csv missing -- Q4 targets remain XBRL-derived. "
+             "Run extract_q4_targets.py first.")
+    if n_over:
+        print("  [q4-override] %d Q4 target values replaced with as-reported 8-K figures" % n_over)
+
     # The forecast row must be empty on all three targets. Assert it.
     for t in TARGETS:
         if FORECAST_ROW in cols[t]:
@@ -717,53 +749,95 @@ def yoy(series, spine):
     return out
 
 
+LOOKAHEAD_GROUPS = {"deere_internal_modern", "deere_internal_legacy",
+                    "deere_internal_pnl"}
+
+
+def crit_r(n, alpha_t=2.0):
+    """|r| at which |t| = alpha_t for a sample of n pairs."""
+    if n < 4:
+        return 1.0
+    return alpha_t / math.sqrt(alpha_t ** 2 + (n - 2))
+
+
 def analyse(spine, cols, colmeta, order, fh):
     p = lambda *a: print(*a, file=fh)
-    driver_cols = [c for c in order
+
+    all_drivers = [c for c in order
                    if colmeta[c]["group"] not in ("target", "calendar")
-                   and c not in ("de_guidance_vintage_issued",)]
+                   and c != "de_guidance_vintage_issued"]
+    # Ex-ante SAFE drivers: everything except Deere's own accounting lines read
+    # contemporaneously (those are published in the same press release as the
+    # target, so a contemporaneous fit is a tautology, not a forecast).
+    safe = [c for c in all_drivers if colmeta[c]["group"] not in LOOKAHEAD_GROUPS]
 
     p("### Coverage (non-missing quarters out of %d panel rows)" % len(spine))
     p("")
-    cov = [(c, sum(1 for k in spine if cols[c].get(k) is not None)) for c in order]
-    for c, n in cov:
-        p("%-60s %3d  %5.1f%%  %s" % (c, n, 100.0 * n / len(spine), colmeta[c]["group"]))
+    p("| column | n | % | group |")
+    p("|---|---|---|---|")
+    for c in order:
+        n = sum(1 for k in spine if cols[c].get(k) is not None)
+        p("| %s | %d | %.0f%% | %s |" % (c, n, 100.0 * n / len(spine), colmeta[c]["group"]))
     p("")
 
-    p("### Driver correlations with each target")
+    n_tests = len(safe) * 5 * 3 * 3
+    p("### Multiple-testing context")
     p("")
+    p("Candidate ex-ante drivers: %d. Lags scanned: 0-4. Targets: 3. "
+      "Transforms: level, YoY, first difference." % len(safe))
+    p("Total correlations computed: ~%d." % n_tests)
+    p("")
+    p("At n=70 the 5%% two-sided critical value is |r| ~ %.3f. Across %d tests "
+      "roughly %d spurious hits at that threshold are expected BY CONSTRUCTION. "
+      "A Bonferroni-style threshold would be |r| ~ %.3f. Treat anything below "
+      "that as a hypothesis, not a finding, and prefer drivers with a mechanism."
+      % (crit_r(70, 1.994), n_tests, int(0.05 * n_tests), crit_r(70, 4.6)))
+    p("")
+
     for tgt in TARGETS:
         tser = cols[tgt]
-        tyoy = yoy(tser, spine)
-        for label, target_series in (("LEVEL", tser), ("YoY %", tyoy)):
+        transforms = [
+            ("LEVEL", tser, False),
+            ("YoY %", yoy(tser, spine), True),
+            ("QoQ diff", {k: tser[k] - tser[unkey(qkey(*k) - 1)]
+                          for k in spine
+                          if k in tser and unkey(qkey(*k) - 1) in tser}, False),
+        ]
+        for label, tvals, is_yoy in transforms:
             rows = []
-            for c in driver_cols:
-                dser = cols[c]
-                dyoy = yoy(dser, spine) if label == "YoY %" else dser
+            for c in safe:
+                base = cols[c]
+                if label == "YoY %":
+                    dvals = yoy(base, spine)
+                elif label == "QoQ diff":
+                    dvals = {k: base[k] - base[unkey(qkey(*k) - 1)]
+                             for k in spine
+                             if k in base and unkey(qkey(*k) - 1) in base}
+                else:
+                    dvals = base
+                bestrow = None
                 for lag in (0, 1, 2, 3, 4):
                     xs, ys = [], []
                     for k in spine:
                         lk = unkey(qkey(*k) - lag)
-                        xs.append(dyoy.get(lk))
-                        ys.append(target_series.get(k))
+                        xs.append(dvals.get(lk))
+                        ys.append(tvals.get(k))
                     r, n = pearson(xs, ys)
-                    if r is not None and n >= 12:
-                        rows.append((abs(r), r, n, lag, c))
+                    if r is None or n < 12:
+                        continue
+                    if bestrow is None or abs(r) > abs(bestrow[0]):
+                        bestrow = (r, n, lag)
+                if bestrow:
+                    rows.append((abs(bestrow[0]), bestrow[0], bestrow[1], bestrow[2], c))
             rows.sort(reverse=True)
-            p("#### %s -- %s  (top 25 by |r|)" % (tgt, label))
+            p("#### %s -- %s  (top 20 ex-ante drivers, best lag 0-4)" % (tgt, label))
             p("")
-            p("| driver | lag (q) | r | n |")
-            p("|---|---|---|---|")
-            seen = set()
-            shown = 0
-            for _, r, n, lag, c in rows:
-                if c in seen:
-                    continue
-                seen.add(c)
-                p("| %s | %d | %+.3f | %d |" % (c, lag, r, n))
-                shown += 1
-                if shown >= 25:
-                    break
+            p("| driver | best lag (q) | r | n | passes Bonferroni |")
+            p("|---|---|---|---|---|")
+            for _, r, n, lag, c in rows[:20]:
+                bonf = "yes" if abs(r) >= crit_r(n, 4.6) else "no"
+                eff = " (overlapping YoY: effective n ~ %d)" % max(4, n // 4) if is_yoy else ""
+                p("| %s | %d | %+.3f | %d | %s%s |" % (c, lag, r, n, bonf, eff))
             p("")
 
 

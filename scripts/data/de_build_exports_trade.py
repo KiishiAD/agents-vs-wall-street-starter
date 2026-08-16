@@ -220,8 +220,9 @@ def main():
                 "value": "%.0f" % r["value_usd"], "units": "USD",
                 "source_type": "trade-data",
                 "source": "UN Comtrade public preview API, reporter=%s" % r["reporter"],
-                "notes": "HS %s (%s); partner=World; %s"
-                         % (r["hs"], HS_LABEL[r["hs"]], SECTOR_CAVEAT),
+                "notes": "HS %s (%s); partner=World; whole-industry HS flow, NOT "
+                         "Deere-only -- every manufacturer shipping from %s is in it"
+                         % (r["hs"], HS_LABEL[r["hs"]], r["reporter"]),
             })
 
     # ---------- 4. corpus / policy rows -----------------------------------
@@ -252,9 +253,24 @@ def main():
 
 
 def fiscal_quarter_months(period_end):
-    """Deere fiscal quarters end late Jan / Apr / Jul / Oct. Approximate the
-    quarter as the three calendar months ending in the period-end month."""
-    y, m = int(period_end[:4]), int(period_end[5:7])
+    """The three calendar months a Deere fiscal quarter actually covers.
+
+    Deere's 13-week quarters do not end on a month boundary. In some years they
+    end in the last week of Jan/Apr/Jul/Oct (e.g. 2025-07-27) and in others in
+    the first days of Feb/May/Aug/Nov (e.g. 2026-05-03, 2026-02-01). Naively
+    taking the three months ending in the period-end MONTH is therefore off by a
+    full month for the early-in-month cases: Q2 FY2026 ended 2026-05-03 and
+    covers Feb/Mar/Apr, not Mar/Apr/May.
+
+    Rule: if the quarter ended in the first half of a month, essentially none of
+    that month is in the quarter, so step back one month first.
+    """
+    y, m, d = int(period_end[:4]), int(period_end[5:7]), int(period_end[8:10])
+    if d <= 15:
+        m -= 1
+        if m < 1:
+            m += 12
+            y -= 1
     out = []
     for k in range(3):
         mm = m - k
@@ -396,9 +412,11 @@ def diagnostics(monthly, annual_world, annual_partner, corpus_path, geo_path, di
 
     lines.append("QUARTERLY: US HS machinery exports vs Deere revenue")
     lines.append("=" * 68)
-    lines.append("Deere fiscal quarters approximated as the 3 calendar months ending")
-    lines.append("in the fiscal period-end month (Deere quarters end late Jan/Apr/Jul/Oct,")
-    lines.append("so each fiscal quarter straddles calendar month boundaries by ~1 week).")
+    lines.append("Each Deere 13-week fiscal quarter is mapped to the 3 calendar months it")
+    lines.append("actually covers: quarters ending in the first half of a month (2026-05-03")
+    lines.append("-> Feb/Mar/Apr) step back one month first. Residual mismatch ~1 week each end.")
+    lines.append("r(level) and r(qoq) are inflated by seasonality shared between the two")
+    lines.append("series; r(YoY) removes it and is the only one worth acting on.")
     lines.append("")
 
     combos = {
