@@ -148,6 +148,9 @@ def _run_job(
         "agreement": pipeline.analyst.agreement,
         "analysts": len(pipeline.analyst.opinions),
         "analystParallel": pipeline.analyst.parallel,
+        "agentsMode": pipeline.agents.get("mode"),
+        "agentsModel": pipeline.agents.get("model"),
+        "agentsSpawned": pipeline.agents.get("spawned"),
         "subagentsPerSignal": pipeline.subagents_per_signal,
         "biasedDiscarded": discarded,
         "droppedSignals": dropped,
@@ -253,6 +256,8 @@ def _print_human(rows: list[dict[str, Any]]) -> None:
         print(f"  extractor                : {r['subagentsPerSignal']} sub-agents/signal, {r['biasedDiscarded']} biased discarded")
         par = "in parallel" if r.get("analystParallel") else "sequential"
         print(f"  analyst                  : {r.get('analysts')} reviewers {par} → consensus")
+        spawned = r.get("agentsSpawned") or 0
+        print(f"  agents                   : {r.get('agentsModel')} — {r.get('agentsMode')}{f', {spawned} spawned' if spawned else ''}")
         for d in r.get("droppedSignals", []):
             print(f"  healed (dropped signal)  : {d['signalId']} — {d['reason']}")
         print(f"  challenge                : {status} ({r['warnings']} warning(s), {r['errors']} error(s))")

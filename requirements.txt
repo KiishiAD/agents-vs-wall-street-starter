@@ -1,2 +1,7 @@
 # Workbook rendering and round-trip validation.
 openpyxl>=3.1,<4
+
+# Agent harness: spawns the signal-extractor sub-agents and analyst reviewers as
+# Pydantic-AI agents on OpenAI. Optional — the pipeline falls back to the
+# deterministic path when it (or OPENAI_API_KEY) is absent. Install to run live.
+pydantic-ai>=0.0.14

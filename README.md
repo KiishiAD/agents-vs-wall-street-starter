@@ -111,7 +111,17 @@ python3 run.py --config path/to/other.json
 
 Each job writes a full provenance receipt to `build/<job>-receipt.json`. The exit code is non-zero if any run fails its challenge, so `python3 run.py` is safe to gate a submission on.
 
-**Agents (Pydantic-AI on OpenAI).** The signal-extractor sub-agents and the analyst reviewers are spawned as Pydantic-AI agents with typed outputs, on `openai:gpt-5.6-sol` (override with `FORECAST_AGENT_MODEL`). Set `OPENAI_API_KEY` to run live agents; with no key they fall back to the deterministic behaviour so offline runs and tests are unchanged. The model only produces reasoning/verdicts — the number is always computed by the deterministic engine. Every receipt carries an `agents` block.
+**Agents (Pydantic-AI on OpenAI).** The signal-extractor sub-agents and the analyst reviewers are spawned as Pydantic-AI agents with typed outputs, on `openai:gpt-5.6-sol` (override with `FORECAST_AGENT_MODEL`). The model only produces reasoning/verdicts — the number is always computed by the deterministic engine. Every receipt carries an `agents` block, and the CLI prints whether the harness is live or in fallback.
+
+By default the harness is **off** and the pipeline uses a deterministic fallback (so offline runs and tests are reproducible). To actually spawn agents:
+
+```bash
+pip3 install -r requirements.txt     # includes pydantic-ai
+export OPENAI_API_KEY=sk-...          # a real key
+python3 run.py --company ADI          # → agents: openai:gpt-5.6-sol — live agents, N spawned
+```
+
+With no `pydantic-ai` installed or no `OPENAI_API_KEY`, `run.py` prints `deterministic fallback (offline)` and spawns nothing — the forecast numbers are identical either way (the agents write reasoning, not numbers).
 
 **Evidence search (Tavily).** In the signal-extractor stage each sub-agent web-searches for its signal's evidence via Tavily. Set `TAVILY_API_KEY` to issue live queries; with no key the run falls back to the frozen corpus and records the query it would have run, so the web-search stage is always visible in the trace and the run stays deterministic. Every receipt carries an `evidenceSearch` block.
 
