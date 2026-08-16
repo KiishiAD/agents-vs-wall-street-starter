@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
 from pathlib import Path
 from types import MappingProxyType
@@ -14,6 +15,14 @@ class SignalRole(str, Enum):
     DRIVER = "driver"
     MODIFIER = "modifier"
     SCENARIO_TRIGGER = "scenario_trigger"
+
+
+class EffectKind(str, Enum):
+    SET_RANGE = "set_range"
+    ADDITIVE = "additive"
+    QUALITATIVE = "qualitative"
+    SCENARIO_ADJUSTMENT = "scenario_adjustment"
+    CONSTRAINT = "constraint"
 
 
 @dataclass(frozen=True)
@@ -34,6 +43,7 @@ class SourceDocument:
     published_at: date | datetime
     url: str
     local_path: Path
+    local_path_reference: str
     sha256: str
 
 
@@ -69,6 +79,44 @@ class SignalDefinition:
     freshness_requirement: str
     correlation_group: str
     status: str
+
+
+@dataclass(frozen=True)
+class NumericRange:
+    low: Decimal
+    high: Decimal
+
+    @property
+    def midpoint(self) -> Decimal:
+        return (self.low + self.high) / Decimal("2")
+
+
+@dataclass(frozen=True)
+class EvidenceProvenance:
+    source_id: str
+    publisher: str
+    source_title: str
+    source_document_type: str
+    published_at: date | datetime
+    source_url: str
+    local_path: str
+    source_sha256: str
+    exact_quote: str
+    locator: str
+
+
+@dataclass(frozen=True)
+class SignalObservation:
+    signal_id: str
+    target_metric_id: str
+    role: SignalRole
+    period: str
+    units: str
+    effect_kind: EffectKind
+    value: NumericRange | Decimal | str
+    provenance: EvidenceProvenance
+    evidence_quality: str
+    freshness: str
 
 
 @dataclass(frozen=True)

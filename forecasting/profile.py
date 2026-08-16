@@ -129,6 +129,7 @@ def _build_sources(
             published_at=published_at,
             url=url,
             local_path=local_path,
+            local_path_reference=local_path_value,
             sha256=expected_hash,
         )
     return sources
