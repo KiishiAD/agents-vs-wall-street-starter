@@ -50,6 +50,7 @@ def collect_candidate_bundle(
         response = client.search(
             query["query"],
             include_domains=query.get("include_domains"),
+            end_date=query.get("end_date"),
         )
         return query, response
 

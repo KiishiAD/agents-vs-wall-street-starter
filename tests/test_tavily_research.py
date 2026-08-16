@@ -53,12 +53,16 @@ class TavilyResearchTests(unittest.TestCase):
         )
         client = TavilyClient("secret", transport=transport, max_results=4, max_extract_urls=2)
 
-        search = client.search("Example filing", include_domains=["example.com"], max_results=99)
+        search = client.search(
+            "Example filing", include_domains=["example.com"], max_results=99,
+            end_date="2026-08-16",
+        )
         extracted = client.extract(["https://example.com/a"])
 
         self.assertEqual(search["request_id"], "search-1")
         self.assertEqual(extracted["request_id"], "extract-1")
         self.assertEqual(transport.calls[0][1]["max_results"], 4)
+        self.assertEqual(transport.calls[0][1]["end_date"], "2026-08-16")
         self.assertNotIn("api_key", transport.calls[0][1])
         self.assertEqual(transport.calls[0][2]["Authorization"], "Bearer secret")
         with self.assertRaisesRegex(ValueError, "at most 2"):
@@ -76,6 +80,7 @@ class TavilyResearchTests(unittest.TestCase):
         self.assertEqual(len(profile_queries), 9)
         self.assertEqual(len({item["profile_section"] for item in profile_queries}), 9)
         self.assertTrue(all("2026-08-16" in item["query"] for item in profile_queries))
+        self.assertTrue(all(item["end_date"] == "2026-08-16" for item in profile_queries))
         self.assertTrue(all("sec.gov" in item["include_domains"] for item in profile_queries))
 
         metric = {"id": "ADI_REVENUE_Q3", "name": "Revenue", "units": "USDm", "targetPeriod": "FY2026Q3"}
@@ -133,6 +138,18 @@ class TavilyResearchTests(unittest.TestCase):
                 retrieved_at=datetime.now(timezone.utc).isoformat(),
             )
             self.assertEqual(post_cutoff["cutoffDecision"], "rejected_post_cutoff")
+
+            undated = freeze_source(
+                {key: value for key, value in result.items() if key != "published_date"},
+                root,
+                query_id="undated",
+                request_id="request-3",
+                information_cutoff="2026-08-16T17:15:00+01:00",
+                retrieved_at="2026-08-16T12:00:00Z",
+            )
+            self.assertEqual(undated["cutoffDecision"], "rejected_missing_publication_date")
+            self.assertIsNone(undated["publishedAt"])
+            self.assertTrue((root / undated["localPath"]).is_file())
 
 
 if __name__ == "__main__":

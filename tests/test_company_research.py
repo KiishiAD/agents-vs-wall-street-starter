@@ -15,7 +15,7 @@ class FakeClient:
         self.search_calls = []
         self.extract_calls = []
 
-    def search(self, query, *, include_domains=None, max_results=None):
+    def search(self, query, *, include_domains=None, max_results=None, end_date=None):
         self.search_calls.append((query, include_domains, max_results))
         slug = query.rsplit(" ", 1)[-1]
         return {

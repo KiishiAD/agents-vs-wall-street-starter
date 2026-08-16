@@ -105,6 +105,7 @@ class TavilyClient:
         *,
         include_domains: list[str] | None = None,
         max_results: int | None = None,
+        end_date: str | None = None,
     ) -> dict[str, Any]:
         bounded_results = min(max_results or self.max_results, self.max_results)
         payload: dict[str, Any] = {
@@ -115,6 +116,12 @@ class TavilyClient:
         }
         if include_domains:
             payload["include_domains"] = list(dict.fromkeys(include_domains))
+        if end_date:
+            try:
+                date.fromisoformat(end_date)
+            except ValueError as error:
+                raise ValueError("Tavily end_date must be YYYY-MM-DD") from error
+            payload["end_date"] = end_date
         response = self._post("search", payload)
         if not isinstance(response.get("results", []), list):
             raise RuntimeError("Tavily search response has invalid results")
@@ -152,6 +159,7 @@ def plan_profile_queries(company: dict[str, Any], information_cutoff: str) -> li
             "profile_section": section,
             "query": f"{company_name} {ticker} {topic} official information published by {cutoff_date}",
             "include_domains": domains,
+            "end_date": cutoff_date,
         }
         for section, topic in PROFILE_QUERY_TOPICS.items()
     ]
@@ -191,6 +199,7 @@ def plan_signal_queries(
                 "target_metric_id": metric["id"],
                 "query": query,
                 "include_domains": domains,
+                "end_date": information_cutoff[:10],
             }
         )
     return queries
@@ -231,9 +240,11 @@ def freeze_source(
     if not isinstance(content, str) or not content.strip():
         raise ValueError("source extraction has no raw_content")
     published_value = result.get("published_date") or result.get("published_at")
-    if not isinstance(published_value, str) or not published_value.strip():
-        raise ValueError("source publication date is required")
-    published = _parse_temporal(published_value)
+    published = None
+    if isinstance(published_value, str) and published_value.strip():
+        published = _parse_temporal(published_value)
+    else:
+        published_value = None
     cutoff = datetime.fromisoformat(information_cutoff.replace("Z", "+00:00"))
     if cutoff.tzinfo is None:
         raise ValueError("information cutoff must include a timezone")
@@ -255,13 +266,19 @@ def freeze_source(
         "title": str(result.get("title") or canonical_url),
         "documentType": str(result.get("document_type") or "web_page"),
         "publishedAt": published_value,
-        "publicationTimeUncertain": len(published_value) == 10,
+        "publicationTimeUncertain": published_value is None or len(published_value) == 10,
         "queryId": query_id,
         "tavilyRequestId": request_id,
         "localPath": local_name,
         "sha256": digest,
         "retrievedAt": retrieved_at or datetime.now(timezone.utc).isoformat(),
-        "cutoffDecision": "rejected_post_cutoff" if _after_cutoff(published, cutoff) else "accepted",
+        "cutoffDecision": (
+            "rejected_missing_publication_date"
+            if published is None
+            else "rejected_post_cutoff"
+            if _after_cutoff(published, cutoff)
+            else "accepted"
+        ),
         "extractionStatus": "frozen",
         "failureReason": None,
     }
