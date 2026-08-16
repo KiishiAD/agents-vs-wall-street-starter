@@ -517,6 +517,96 @@ def validate_pl(b):
     return problems
 
 
+def repair_pl(b):
+    """Recover product-line rows whose cells the pdf->md conversion merged.
+
+    Only applied when the block still carries a well-formed stated total row.
+    Unknown cells are solved against the column residuals; the solution must be
+    unique as a multiset and every multi-segment row total must itself appear
+    among the stray numbers. Order within a merged cell is taken to follow the
+    order the product lines are printed in. Returns True if repaired.
+    """
+    import itertools
+    segs = SEG_OLD if b["scheme"] == "old" else SEG_NEW
+    n = len(segs)
+    if not b["totals"] or len(b["totals"]) != n + 1:
+        return False
+    vocab = PL_OLD if b["scheme"] == "old" else PL_NEW
+
+    good, bad_rows = OrderedDict(), []
+    for name, (spans, v) in b["rows"].items():
+        if len(v) == len(spans) + 1 and sum(v[:-1]) == v[-1]:
+            good[name] = (spans, v)
+        else:
+            bad_rows.append((name, v))
+
+    # stray numbers: from over-long rows and from rows whose label was merged
+    pool = []
+    missing_names = []
+    for name, v in bad_rows:
+        missing_names.append(name)
+        pool.extend(v)
+    def squash(s):
+        return re.sub(r"[^a-z]", "", s.lower())
+
+    for lab, v in b.get("unparsed", []):
+        pool.extend(v)
+        for cand in vocab:
+            if squash(cand) in squash(lab) \
+                    and cand not in good and cand not in missing_names:
+                missing_names.append(cand)
+    if not missing_names or not pool:
+        return False
+    # keep printing order
+    missing_names = [c for c in vocab if c in missing_names]
+    cands = []
+    for v in pool:
+        if v not in cands:
+            cands.append(v)
+
+    residual = {}
+    for i, s in enumerate(segs):
+        residual[s] = b["totals"][i] - sum(
+            v[spans.index(s)] for spans, v in good.values() if s in spans)
+
+    per_seg = {}
+    for s in segs:
+        unknowns = [nm for nm in missing_names if s in vocab[nm]]
+        if not unknowns:
+            if residual[s] != 0:
+                return False
+            continue
+        sols = [c for c in itertools.product(cands, repeat=len(unknowns))
+                if sum(c) == residual[s]]
+        # collapse permutations: keep the one ordered as the values first appear
+        uniq = {tuple(sorted(c)) for c in sols}
+        if len(uniq) != 1:
+            return False
+        multiset = sorted(uniq.pop())
+        ordered = sorted(multiset, key=lambda v: cands.index(v))
+        per_seg[s] = dict(zip(unknowns, ordered))
+
+    out = OrderedDict()
+    for nm in missing_names:
+        spans = vocab[nm]
+        vals = [per_seg[s][nm] for s in spans]
+        tot = sum(vals)
+        if len(spans) > 1 and tot not in pool:
+            return False
+        out[nm] = (spans, vals + [tot])
+
+    merged = OrderedDict()
+    for nm in vocab:
+        if nm in good:
+            merged[nm] = good[nm]
+        elif nm in out:
+            merged[nm] = out[nm]
+    b["rows"] = merged
+    b.pop("unparsed", None)
+    b["repaired"] = sorted(out)
+    return True
+
+
 def main():
     files = sorted(f for f in os.listdir(FILINGS) if f.endswith(".md"))
     all_blocks = []

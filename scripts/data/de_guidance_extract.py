@@ -107,6 +107,25 @@ EVENTS = [
 ]
 
 
+def docs_for(issue_date, kinds=("q1-10q", "q2-10q", "q3-10q", "q4-10k", "fy-10k")):
+    """All filing docs published on a date whose filename matches one of `kinds`."""
+    d = os.path.join(CORPUS, "filings")
+    return ["filings/" + f for f in sorted(os.listdir(d))
+            if f.startswith(issue_date) and any(k in f for k in kinds)]
+
+
+def transcript_for(issue_date):
+    """The prepared-remarks ('call-pres') transcript published on a date."""
+    d = os.path.join(CORPUS, "call-transcripts")
+    cands = [f for f in sorted(os.listdir(d)) if f.startswith(issue_date) and "pres" in f]
+    return "call-transcripts/" + cands[0] if cands else None
+
+
+def transcripts_for(issue_date):
+    d = os.path.join(CORPUS, "call-transcripts")
+    return ["call-transcripts/" + f for f in sorted(os.listdir(d)) if f.startswith(issue_date)]
+
+
 def slide_for(issue_date):
     """Resolve the earnings-call slide deck published on a given date."""
     d = os.path.join(CORPUS, "slides")
@@ -155,6 +174,8 @@ FS_PATS = [
     r"[Ff]iscal[- ]year (?:19|20)\d\d net income attributable to Deere & Company for the financial services operations is (?:expected|forecast|forecasted) to be (?:approximately |about )?\$\s?([\d,]+) million",
     r"net income attributable to Deere & Company for the financial services operations is forecast(?:ed)? to be (?:approximately |about )?\$\s?([\d,]+) million",
     r"[Ff]iscal-year (?:19|20)\d\d net income attributable to Deere & Company for the financial services operations is forecast to be \$\s?([\d,]+) million",
+    r"[Ff]iscal[- ]year (?:19|20)\d\d net income attributable to Deere & Company for the financial services operations is projected to be (?:approximately |about )?\$\s?([\d,]+) million",
+    r"financial services (?:segment|operations)[^.]{0,90}(?:is|are) (?:expected|forecast|forecasted|projected) to be (?:approximately |about )?\$\s?([\d,]+) million",
     r"[Ff]inancial [Ss]ervices\.? [Ff]iscal[- ]year (?:19|20)\d\d[^.]{0,80}\$\s?([\d,]+) million",
     r"net income attributable to Deere & Company of (?:about |approximately |~ ?)?\$\s?([\d,]+) million in (?:19|20)\d\d",
 ]
@@ -309,46 +330,163 @@ def extract_modern_segment_driver(txt, col):
 
 
 # ------------------------------------------------------ slide-deck operating margin
-SEG_NAMES = [("ppa", "Production & Precision Ag"), ("sat", "Small Ag & Turf"),
-             ("cf", "Construction & Forestry")]
+SEG_NAMES = [("ppa", r"Production (?:&|and) Precision Ag"),
+             ("sat", r"Small Ag (?:&|and) Turf"),
+             ("cf", r"Construction (?:&|and) Forestry")]
+
+
+def _last_seg(head):
+    """Which segment heading appears last in the text preceding a slide block."""
+    best, found = -1, None
+    for key, pat in SEG_NAMES:
+        ms = list(re.finditer(pat, head, re.I))
+        if ms and ms[-1].start() > best:
+            best, found = ms[-1].start(), key
+    return found, best
 
 
 def extract_slide_segment_outlook(rel):
-    """-> {seg: {'sales': (lo,hi)|None, 'margin': (lo,hi)|None}} from an earnings slide deck."""
+    """-> {seg: {'margin': (lo,hi)}} operating-margin outlook from an earnings slide deck.
+
+    Slide decks describe two charts per segment: FY net sales and FY operating
+    margin. Net-sales guidance is taken from the 8-K table instead (cleaner);
+    the slides are the only source for the segment operating-margin outlook.
+    """
     txt = read(rel)
     res = {}
     marks = [m.start() for m in re.finditer(r"Business Segment Outlook", txt)]
     for i, st in enumerate(marks):
-        end = marks[i + 1] if i + 1 < len(marks) else min(len(txt), st + 4000)
+        end = marks[i + 1] if i + 1 < len(marks) else len(txt)
+        end = min(end, st + 2500)
         head = txt[max(0, st - 1500):st]
-        seg = None
-        best = -1
-        for key, name in SEG_NAMES:
-            j = head.rfind(name)
-            if j > best:
-                best, seg = j, key
-        if seg is None or best < 0:
+        seg, _ = _last_seg(head)
+        if seg is None:
             continue
         blk = txt[st:end]
-        cut = blk.find("Operating Margin")
-        sales_part = blk[:cut] if cut > 0 else blk
-        marg_part = blk[cut:] if cut > 0 else ""
-        entry = res.setdefault(seg, {"sales": None, "margin": None})
-        if entry["sales"] is None:
-            entry["sales"] = _first_pct_range(sales_part)
-        if entry["margin"] is None:
-            entry["margin"] = _first_pct_range(marg_part)
+        val = _margin_from_block(blk)
+        if val and seg not in res:
+            res[seg] = {"margin": val}
     return res
+
+
+def _margin_from_block(blk):
+    """First percent range that follows an 'Operating Margin' chart label.
+
+    Skips 'Operating Margin' mentions that are part of a combined caption
+    ("comparing Net Sales and Operating Margin ..."), detected by a 'Net Sales'
+    mention appearing before the first percentage in the look-ahead window.
+    """
+    for m in re.finditer(r"[Oo]perating [Mm]argin", blk):
+        win = blk[m.end():m.end() + 600]
+        rng = re.search(r"(\d+(?:\.\d+)?)%?\s*(?:-|to)\s*(\d+(?:\.\d+)?)%", win)
+        apx = re.search(r"~\s*(\d+(?:\.\d+)?)%", win)
+        hit = rng or apx
+        if not hit:
+            continue
+        ns = re.search(r"[Nn]et [Ss]ales", win[:130])
+        if ns and ns.start() < hit.start():
+            continue
+        if rng and (not apx or rng.start() <= apx.start()):
+            return float(rng.group(1)), float(rng.group(2))
+        return float(apx.group(1)), float(apx.group(1))
+    return None
 
 
 def _first_pct_range(s):
     """First forward-looking percent range/approx in a slide image caption.
     Bare single values like '26.1%' are prior-year actuals and are skipped."""
-    m = re.search(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)%", s)
+    m = re.search(r"(\d+(?:\.\d+)?)%?\s*(?:-|to)\s*(\d+(?:\.\d+)?)%", s)
     if m:
         return float(m.group(1)), float(m.group(2))
     m = re.search(r"~\s*(\d+(?:\.\d+)?)%", s)
     if m:
         v = float(m.group(1))
         return v, v
+    return None
+
+
+# ------------------------------------------------- transcript (prepared remarks) forms
+TRANSCRIPT_SEG_SALES = {
+    "ag_turf": r"(?:sales of worldwide|Deere sales of worldwide|worldwide) (?:Ag(?:riculture)?)\s*(?:and|&)\s*Turf equipment (?:are|is|continue to be) (?:now |still )?forecast(?:ed)? to be (up|down)(?: between)? (?:about |approximately |roughly )?(\d+(?:\.\d+)?)%(?:\s*(?:and|to|-)\s*(\d+(?:\.\d+)?)%)?",
+    "cf": r"Construction\s*(?:and|&)\s*Forestry(?: \d{4})?(?: net)? sales (?:are|is)? ?(?:now |still )?forecast(?:ed)? to be (up|down)(?: between)? (?:about |approximately |roughly )?(\d+(?:\.\d+)?)%(?:\s*(?:and|to|-)\s*(\d+(?:\.\d+)?)%)?",
+}
+TRANSCRIPT_SEG_SALES_ALT = {
+    "cf": r"[Nn]et sales in Construction\s*(?:and|&)\s*Forestry are (?:now )?forecast to be (up|down) about (\d+(?:\.\d+)?)%",
+}
+
+
+def extract_transcript_seg_sales(txt, seg):
+    pats = [TRANSCRIPT_SEG_SALES[seg]] + ([TRANSCRIPT_SEG_SALES_ALT[seg]] if seg in TRANSCRIPT_SEG_SALES_ALT else [])
+    for p in pats:
+        m = re.search(p, txt, re.I)
+        if not m:
+            continue
+        sign = -1.0 if m.group(1).lower() == "down" else 1.0
+        a = float(m.group(2))
+        b = float(m.group(3)) if (m.lastindex or 0) >= 3 and m.group(3) else a
+        return tuple(sorted([sign * a, sign * b]))
+    return None
+
+
+AT_MARGIN_PATS = [
+    r"(?:20\d\d )?operating margin for the Ag(?:riculture)?\s*(?:and|&)\s*Turf division is forecast(?:ed)? (?:at|to be) (?:about|approximately) (\d+(?:\.\d+)?)%",
+    r"Ag(?:riculture)?\s*(?:and|&)\s*Turf [Dd]ivision'?s? (?:operating )?margins? is (?:now )?forecast(?:ed)? to be (?:about|approximately|up approximately) (\d+(?:\.\d+)?)%",
+    r"Ag(?:riculture)?\s*(?:and|&)\s*Turf [Dd]ivision (?:operating )?margins? is (?:now )?forecast(?:ed)? to be (?:about|approximately|up approximately) (\d+(?:\.\d+)?)%",
+    r"forecast for the Ag(?:riculture)?\s*(?:and|&)\s*Turf division'?s? operating margin (?:continues to be|is now) (?:approximately|about) (\d+(?:\.\d+)?)%",
+    r"Ag(?:riculture)?\s*(?:and|&)\s*Turf [Dd]ivision operating margin forecast is about (\d+(?:\.\d+)?)%",
+]
+
+
+def extract_at_operating_margin(txt):
+    for p in AT_MARGIN_PATS:
+        m = re.search(p, txt, re.I)
+        if m:
+            return float(m.group(1))
+    return None
+
+
+CF_MARGIN_PATS = [
+    r"C ?& ?F'?s? full year operating margin is (?:projected|forecast(?:ed)?) to be (?:about|approximately) (\d+(?:\.\d+)?)%",
+]
+
+
+def extract_cf_operating_margin(txt):
+    for p in CF_MARGIN_PATS:
+        m = re.search(p, txt, re.I)
+        if m:
+            return float(m.group(1))
+    return None
+
+
+def extract_ppa_absolute_sales(txt):
+    """FY2021 Q1 gave PPA/SAT/CF net sales as absolute dollar ranges."""
+    blk = segment_outlook_block(txt)
+    out = {}
+    if not blk:
+        return out
+    for seg, lab in SEG_LABEL.items():
+        m = re.search(r"\|[^|\n]*" + lab + r"[^|\n]*\|\s*\$?([\d,]+) to ([\d,]+)\s*\|", blk, re.I)
+        if m:
+            out[seg] = (float(m.group(1).replace(",", "")), float(m.group(2).replace(",", "")))
+    return out
+
+
+def slide_sales_direction(rel, seg):
+    """Sign of a slide's segment net-sales forecast: -1 down, +1 up, None unknown."""
+    txt = read(rel)
+    marks = [m.start() for m in re.finditer(r"Business Segment Outlook", txt)]
+    for i, st in enumerate(marks):
+        end = marks[i + 1] if i + 1 < len(marks) else min(len(txt), st + 4000)
+        head = txt[max(0, st - 1500):st]
+        found, _best = _last_seg(head)
+        if found != seg:
+            continue
+        blk = txt[st:end]
+        _om = list(re.finditer(r"[Oo]perating [Mm]argin", blk))
+        cut = _om[-1].start() if _om else -1
+        part = blk[:cut] if cut > 0 else blk
+        if re.search(r"downward|pointing down|points? down|decrease|decline|negative", part, re.I):
+            return -1
+        if re.search(r"upward|pointing up|increase", part, re.I):
+            return 1
     return None

@@ -45,15 +45,31 @@ MONTHS = ["january", "february", "march", "april", "may", "june", "july",
 MON_IDX = {m: i + 1 for i, m in enumerate(MONTHS)}
 MON_IDX.update({m[:3]: i + 1 for i, m in enumerate(MONTHS)})
 
-# Canonical row labels -> series key
+# Canonical row labels -> series key.
+# Two document generations exist:
+#   modern (2011-12 onward):  "< 40 HP" / "40 < 100 HP" / "100+ HP" /
+#                             "Total 2WD Farm Tractors" / "4WD Farm Tractors" /
+#                             "Total Farm Tractors" / "Self-Prop Combines"
+#   legacy (2004-2011 Flash): "Under 40 HP" / "40 & Under 100 HP" /
+#                             "100 HP & Over" / "2 Wheel Drive" /
+#                             "4 Wheel Drive" / "WHEEL TRACTORS" /
+#                             "(Self-Propelled)"
+# Order matters: the more specific modern labels are tested first.
 ROW_PATTERNS = [
     (re.compile(r"^\s*<\s*40\s*HP", re.I), "tractor_2wd_lt40hp"),
+    (re.compile(r"^\s*Under\s*40\s*HP", re.I), "tractor_2wd_lt40hp"),
     (re.compile(r"^\s*40\s*<\s*100\s*HP", re.I), "tractor_2wd_40to100hp"),
-    (re.compile(r"^\s*100\+?\s*HP", re.I), "tractor_2wd_100hp_plus"),
+    (re.compile(r"^\s*40\s*&\s*Under\s*100\s*HP", re.I), "tractor_2wd_40to100hp"),
+    (re.compile(r"^\s*100\+\s*HP", re.I), "tractor_2wd_100hp_plus"),
+    (re.compile(r"^\s*100\s*HP\s*&\s*Over", re.I), "tractor_2wd_100hp_plus"),
     (re.compile(r"^\s*Total\s+2WD\s+Farm\s+Tractors", re.I), "tractor_2wd_total"),
+    (re.compile(r"^\s*2\s*Wheel\s*Drive\b", re.I), "tractor_2wd_total"),
     (re.compile(r"^\s*4WD\s+Farm\s+Tractors", re.I), "tractor_4wd"),
+    (re.compile(r"^\s*4\s*Wheel\s*Drive\b", re.I), "tractor_4wd"),
     (re.compile(r"^\s*Total\s+Farm\s+Tractors", re.I), "tractor_total"),
+    (re.compile(r"^\s*WHEEL\s+TRACTORS\b", re.I), "tractor_total"),
     (re.compile(r"^\s*Self[- ]?Prop(elled)?\.?\s+Combines", re.I), "combine_sp"),
+    (re.compile(r"^\s*\(\s*Self[- ]?Propelled\s*\)", re.I), "combine_sp"),
 ]
 
 NUM = re.compile(r"-?[\d,]+\.?\d*")
@@ -71,6 +87,12 @@ def http_get(url, timeout=45, tries=3):
             })
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read(), r.headers.get("Content-Type", "")
+        except urllib.error.HTTPError as e:
+            # 404/410 are definitive -- never retry them
+            if e.code in (400, 403, 404, 410):
+                raise
+            last = e
+            time.sleep(1.5 * (attempt + 1))
         except Exception as e:  # noqa: BLE001
             last = e
             time.sleep(1.5 * (attempt + 1))
@@ -124,16 +146,24 @@ def fetch_pdf(url, wayback_ts=None):
     target = url
     if wayback_ts:
         target = "https://web.archive.org/web/%sid_/%s" % (wayback_ts, url)
-    try:
-        body, ctype = http_get(target)
-    except Exception as e:  # noqa: BLE001
-        print("  DL FAIL %s (%s)" % (url, e), file=sys.stderr)
-        return None
-    if not body.startswith(b"%PDF"):
-        return None
-    with open(path, "wb") as fh:
-        fh.write(body)
-    return path
+    # curl is markedly more reliable than urllib against archive.org, which
+    # refuses urllib connections under even light concurrency.
+    tmp = path + ".part"
+    for attempt in range(4):
+        subprocess.run(["curl", "-sSL", "--max-time", "90",
+                        "--retry", "2", "--retry-delay", "3",
+                        "-A", UA, "-o", tmp, target],
+                       capture_output=True)
+        if os.path.exists(tmp):
+            with open(tmp, "rb") as fh:
+                head = fh.read(5)
+            if head.startswith(b"%PDF"):
+                os.replace(tmp, path)
+                return path
+            os.remove(tmp)
+        time.sleep(2 + 3 * attempt)
+    print("  DL FAIL %s" % url, file=sys.stderr)
+    return None
 
 
 # ------------------------------------------------------------------ parsing
@@ -149,13 +179,14 @@ def pdf_text(path):
 
 def parse_header_period(text, fallback_name=""):
     """Find the report month/year, e.g. 'December 2021'."""
-    head = "\n".join(text.splitlines()[:12])
-    m = re.search(r"\b(%s)\s+(\d{4})\b" % "|".join(MONTHS), head, re.I)
-    if m:
-        return MON_IDX[m.group(1).lower()], int(m.group(2))
-    m = re.search(r"\b(%s)\s+(\d{4})\b" % "|".join(MONTHS), text, re.I)
-    if m:
-        return MON_IDX[m.group(1).lower()], int(m.group(2))
+    # legacy Flash Reports write "September, 2004 Flash Report"; modern ones
+    # write "December 2021" -- allow the optional comma, but never let
+    # "October 11, 2004" (the cover-letter date) match.
+    pat = r"\b(%s),?\s+((?:19|20)\d{2})\b" % "|".join(MONTHS)
+    head = "\n".join(text.splitlines()[:16])
+    for hay in (head, text):
+        for m in re.finditer(pat, hay, re.I):
+            return MON_IDX[m.group(1).lower()], int(m.group(2))
     # filename fallbacks: US-Month-Ag-Report-12-2021 / 18-05-USAG / 12_12_USAG
     fn = fallback_name
     m = re.search(r"Report-(\d{1,2})-(\d{4})", fn, re.I)
@@ -192,27 +223,21 @@ def parse_table(text):
         for pat, key in ROW_PATTERNS:
             if key in out:
                 continue
-            if pat.match(line.strip()) or pat.match(line):
-                nums = NUM.findall(line)
-                # drop tokens that are part of the label (e.g. '40', '100')
-                lbl_end = 0
-                mm = re.match(r"\s*([^0-9]*(?:<\s*40\s*HP|40\s*<\s*100\s*HP|"
-                              r"100\+?\s*HP|Total\s+2WD\s+Farm\s+Tractors|"
-                              r"4WD\s+Farm\s+Tractors|Total\s+Farm\s+Tractors|"
-                              r"Self[- ]?Prop(?:elled)?\.?\s+Combines))",
-                              line, re.I)
-                if mm:
-                    lbl_end = mm.end()
-                nums = NUM.findall(line[lbl_end:])
-                vals = []
-                for n in nums:
-                    try:
-                        vals.append(float(n.replace(",", "")))
-                    except ValueError:
-                        pass
-                if len(vals) >= 6:
-                    out[key] = vals
-                break
+            m = pat.match(line) or pat.match(line.lstrip())
+            if not m:
+                continue
+            # Numbers are read only AFTER the label so that digits inside the
+            # label itself ("40", "100") can never be mistaken for data.
+            tail = (line if pat.match(line) else line.lstrip())[m.end():]
+            vals = []
+            for n in NUM.findall(tail):
+                try:
+                    vals.append(float(n.replace(",", "")))
+                except ValueError:
+                    pass
+            if len(vals) >= 6:
+                out[key] = vals
+            break
     return out
 
 
@@ -281,14 +306,20 @@ def main():
             jobs.append(("https://www.aem.org/AEM/media/docs/Statistics/"
                          "US-Month-Ag-Report-%02d-%d.pdf" % (m, y), None))
 
-    all_obs = []
-    ok = 0
-    seen_files = set()
+    uniq, seen_files = [], set()
     for url, ts in jobs:
         if (url, ts) in seen_files:
             continue
         seen_files.add((url, ts))
-        p = fetch_pdf(url, ts)
+        uniq.append((url, ts))
+
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        paths = list(ex.map(lambda j: (fetch_pdf(j[0], j[1]), j[0], j[1]), uniq))
+
+    all_obs = []
+    ok = 0
+    for p, url, ts in paths:
         if not p:
             continue
         obs = observations_from_pdf(p, url, ts)

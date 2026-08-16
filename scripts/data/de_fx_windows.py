@@ -36,16 +36,33 @@ SERIES = {
     "DEXSFUS": ("ZAR", "fx_per_usd"),
 }
 
-# Deere fiscal-quarter windows, (start, end) inclusive, from the period-end
-# dates stated in the 10-Q/10-K filings in the corpus.
+# Deere fiscal-quarter windows, (start, end) inclusive.  Every period end is a
+# date stated in the corresponding 10-Q/10-K in the corpus; each start is the
+# day after the preceding quarter's stated end.
 WINDOWS = {
-    "FY2026Q3": ("2026-05-04", "2026-08-02"),
-    "FY2025Q3": ("2025-04-28", "2025-07-27"),
-    "FY2026Q2": ("2026-02-02", "2026-05-03"),
-    "FY2025Q2": ("2025-01-27", "2025-04-27"),
-    "FY2026Q1": ("2025-11-03", "2026-02-01"),
+    "FY2021Q1": ("2020-11-02", "2021-01-31"),
+    "FY2021Q2": ("2021-02-01", "2021-05-02"),
+    "FY2021Q3": ("2021-05-03", "2021-08-01"),
+    "FY2022Q1": ("2021-11-01", "2022-01-30"),
+    "FY2022Q2": ("2022-01-31", "2022-05-01"),
+    "FY2022Q3": ("2022-05-02", "2022-07-31"),
+    "FY2023Q1": ("2022-10-31", "2023-01-29"),
+    "FY2023Q2": ("2023-01-30", "2023-04-30"),
+    "FY2023Q3": ("2023-05-01", "2023-07-30"),
+    "FY2024Q1": ("2023-10-30", "2024-01-28"),
+    "FY2024Q2": ("2024-01-29", "2024-04-28"),
+    "FY2024Q3": ("2024-04-29", "2024-07-28"),
     "FY2025Q1": ("2024-10-28", "2025-01-26"),
+    "FY2025Q2": ("2025-01-27", "2025-04-27"),
+    "FY2025Q3": ("2025-04-28", "2025-07-27"),
+    "FY2026Q1": ("2025-11-03", "2026-02-01"),
+    "FY2026Q2": ("2026-02-02", "2026-05-03"),
+    "FY2026Q3": ("2026-05-04", "2026-08-02"),
 }
+
+# (target fiscal quarter) -> (prior-year fiscal quarter) for the yoy move
+YOY_PAIRS = [("FY%dQ%d" % (y, q), "FY%dQ%d" % (y - 1, q))
+             for y in range(2022, 2027) for q in (1, 2, 3)]
 
 
 def load(series):
@@ -86,12 +103,16 @@ def main():
             avg, n = window_avg(obs, lo, hi, orient)
             rec["windows"][name] = {"avg_usd_per_fx": avg, "n_obs": n,
                                     "start": lo, "end": hi}
-        for q in ("Q1", "Q2", "Q3"):
-            cur = rec["windows"]["FY2026" + q]["avg_usd_per_fx"]
-            pri = rec["windows"]["FY2025" + q]["avg_usd_per_fx"]
-            rec.setdefault("yoy_pct", {})[q] = (
+        rec["yoy_pct"] = {}
+        for tgt, base in YOY_PAIRS:
+            cur = rec["windows"].get(tgt, {}).get("avg_usd_per_fx")
+            pri = rec["windows"].get(base, {}).get("avg_usd_per_fx")
+            rec["yoy_pct"][tgt] = (
                 None if (cur is None or pri is None or pri == 0)
                 else 100.0 * (cur / pri - 1.0))
+        # convenience aliases for the current fiscal year
+        for q in ("Q1", "Q2", "Q3"):
+            rec["yoy_pct"][q] = rec["yoy_pct"].get("FY2026" + q)
         out[ccy] = rec
     json.dump(out, sys.stdout, indent=1)
 

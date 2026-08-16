@@ -72,6 +72,38 @@ def yoy(series):
             for t in series if (t - 4) in series and series[t - 4]}
 
 
+def selftest():
+    """Pin the sign convention: construct a peer that genuinely leads by 1 quarter
+    and assert the search recovers k=+1."""
+    import random
+    random.seed(7)
+    shock = {t: random.gauss(0, 1) for t in range(8000, 8100)}
+    de_g = {t: shock[t] for t in shock}
+    peer_g = {t: shock[t + 1] for t in shock if (t + 1) in shock}   # peer moves 1q EARLY
+    best = None
+    for k in range(-4, 5):
+        xs = [peer_g[t - k] for t in sorted(de_g) if (t - k) in peer_g]
+        ys = [de_g[t] for t in sorted(de_g) if (t - k) in peer_g]
+        r, n, _ = pearson(xs, ys)
+        if r is not None and (best is None or r > best[0]):
+            best = (r, k)
+    assert best[1] == 1 and best[0] > 0.99, "sign convention broken: %r" % (best,)
+    return "sign-convention self-test PASSED (synthetic 1q-early peer recovered as k=+1)"
+
+
+def ols(xs, ys):
+    n = len(xs)
+    mx, my = sum(xs) / n, sum(ys) / n
+    sxx = sum((a - mx) ** 2 for a in xs)
+    if sxx <= 0:
+        return None
+    b = sum((a - mx) * (c - my) for a, c in zip(xs, ys)) / sxx
+    a0 = my - b * mx
+    resid = [c - (a0 + b * a) for a, c in zip(xs, ys)]
+    se = math.sqrt(sum(e * e for e in resid) / max(n - 2, 1))
+    return a0, b, se, n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--csv", required=True)
@@ -103,6 +135,7 @@ def main():
     latest = max(gq[base])
     cut = latest - args.recent + 1
 
+    print(selftest())
     print("=" * 96)
     print("DEERE PEER READ-ACROSS -- YoY quarterly revenue growth, calendar-quarter aligned")
     print("base = %s ; latest aligned calendar quarter for base = %s" % (base, cq_name(latest)))
@@ -188,6 +221,59 @@ def main():
     print("Data availability right now (2026-08-16): latest aligned calendar quarter per company")
     for comp in sorted(q):
         print("    %-9s %s   (n quarters = %d)" % (comp, cq_name(max(q[comp])), len(q[comp])))
+
+    # ------------------------------------------------------------------ nowcast
+    target = latest + 1   # the calendar quarter Deere has not yet reported
+    print()
+    print("=" * 96)
+    print("NOWCAST INPUTS for Deere's unreported quarter (aligned calendar quarter %s)"
+          % cq_name(target))
+    print("Deere FY2026 Q3 runs approx 2026-05-04..2026-08-02, midpoint mid-June -> %s."
+          % cq_name(target))
+    print("Peers that have ALREADY reported an overlapping quarter, with their YoY growth,")
+    print("and the Deere growth each one implies via a univariate OLS fitted at its best lag:")
+    print("%-9s %-9s %-10s %-9s %-8s %-9s %s"
+          % ("peer", "cq", "peer YoY", "best k", "r", "n", "implied DE YoY (+/-1 se)"))
+    for comp in sorted(gq):
+        if comp == base:
+            continue
+        # rank candidate lags by |r|, then use the strongest one for which the
+        # peer observation actually EXISTS today. A peer whose best lag is -1
+        # (it trails Deere) cannot nowcast Deere at all -- fall back to k=0.
+        ranked = []
+        for k in range(-4, 5):
+            xs, ys = [], []
+            for t in sorted(gq[base]):
+                if (t - k) in gq[comp]:
+                    xs.append(gq[comp][t - k])
+                    ys.append(gq[base][t])
+            r, n, _ = pearson(xs, ys)
+            if r is not None and n >= 8:
+                ranked.append((abs(r), r, k, n))
+        ranked.sort(reverse=True)
+        pick = next(((r, k, n) for _a, r, k, n in ranked if (target - k) in gq[comp]), None)
+        if pick is None:
+            continue
+        rr, k, nn = pick
+        b = (rr, nn, None, k)
+        src_t = target - k          # peer observation that maps onto Deere at `target`
+        xs, ys = [], []
+        for t in sorted(gq[base]):
+            if (t - k) in gq[comp]:
+                xs.append(gq[comp][t - k])
+                ys.append(gq[base][t])
+        fit = ols(xs, ys)
+        if not fit:
+            continue
+        a0, bb, se, n = fit
+        x = gq[comp][src_t]
+        yhat = a0 + bb * x
+        print("%-9s %-9s %+9.1f%% %+9d %+8.3f %-9d %+.1f%%  +/- %.1f%%"
+              % (comp, cq_name(src_t), 100 * x, k, b[0], n, 100 * yhat, 100 * se))
+    print()
+    print("CAVEATS on the nowcast block: single-regressor OLS on overlapping YoY windows;")
+    print("standard errors are in-sample residual sd and understate true uncertainty.")
+    print("Kubota growth is in JPY and carries a translation component Deere does not.")
 
 
 if __name__ == "__main__":

@@ -116,14 +116,28 @@ CE = {
                          src="2026-05-21__de-us-20260521-q2-10q__1055929.md"),
 }
 
-# Western Europe -- used ONLY as a no-Russia control for the structural-break test.
+# Western Europe -- the no-Russia control for the structural-break test.
+# Q1-Q3 printed in the 10-Qs; Q4 = 10-K annual less the printed 9M.
+# FY annual WE totals from the 10-Ks: 2020 5,333 / 2021 6,429 / 2022 6,344 /
+#                                     2023 7,321 / 2024 6,189 / 2025 6,550.
 WE = {
-    ("2021", "Q1"): 1017, ("2021", "Q2"): 1728, ("2021", "Q3"): 1387, ("2021", "Q4"): 2297,
-    ("2022", "Q1"): 1211, ("2022", "Q2"): 1712, ("2022", "Q3"): 1465, ("2022", "Q4"): 1956,
-    ("2023", "Q1"): 1541, ("2023", "Q2"): 2113, ("2023", "Q3"): 1699, ("2023", "Q4"): 1968,
-    ("2024", "Q1"): 1440, ("2024", "Q2"): 1852, ("2024", "Q3"): 1424, ("2024", "Q4"): 1473,
-    ("2025", "Q1"): 1016, ("2025", "Q2"): 1820, ("2025", "Q3"): 1637, ("2025", "Q4"): 2077,
+    ("2020", "Q1"): 1139, ("2020", "Q2"): 1491, ("2020", "Q3"): 1501, ("2020", "Q4"): 1202,
+    ("2021", "Q1"): 1398, ("2021", "Q2"): 1867, ("2021", "Q3"): 1727, ("2021", "Q4"): 1437,
+    ("2022", "Q1"): 1383, ("2022", "Q2"): 1683, ("2022", "Q3"): 1696, ("2022", "Q4"): 1582,
+    ("2023", "Q1"): 1459, ("2023", "Q2"): 2169, ("2023", "Q3"): 2091, ("2023", "Q4"): 1602,
+    ("2024", "Q1"): 1421, ("2024", "Q2"): 1857, ("2024", "Q3"): 1560, ("2024", "Q4"): 1351,
+    ("2025", "Q1"): 1016, ("2025", "Q2"): 1820, ("2025", "Q3"): 2029, ("2025", "Q4"): 1685,
     ("2026", "Q1"): 1430, ("2026", "Q2"): 2141,
+}
+# Western Europe by segment, recent quarters only -- for the segment-level ratio anchor.
+WE_SEG = {
+    ("2024", "Q3"): dict(PPA=522, SAT=542, CF=432, FS=64),
+    ("2025", "Q1"): dict(PPA=277, SAT=352, CF=344, FS=43),
+    ("2025", "Q2"): dict(PPA=612, SAT=667, CF=497, FS=44),
+    ("2025", "Q3"): dict(PPA=677, SAT=757, CF=550, FS=45),
+    ("2025", "Q4"): dict(PPA=504, SAT=564, CF=564, FS=53),   # derived FY less 9M
+    ("2026", "Q1"): dict(PPA=464, SAT=486, CF=426, FS=54),
+    ("2026", "Q2"): dict(PPA=654, SAT=827, CF=608, FS=52),
 }
 
 # FY annual totals as printed in the 10-Ks (cross-foot targets)
@@ -267,6 +281,22 @@ def main():
     except Exception as e:
         print(f"WARN: DEXUSEU unavailable ({e})")
 
+    # ---- 5. Q3 FY2026 forecast (NOT an actual -- Deere reports 2026-08-20) --------------
+    FC = {"PPA": (308, 265, 345, "low"), "SAT": (120, 100, 140, "low"),
+          "CF": (110, 96, 124, "medium"), "FS": (2, 1, 3, "medium"),
+          "TOTAL": (540, 462, 612, "low")}
+    base = {"PPA": 301, "SAT": 130, "CF": 103, "FS": 2, "TOTAL": 536}
+    for seg, (c, lo, hi, conf) in FC.items():
+        for tag, v in (("central", c), ("low", lo), ("high", hi)):
+            add(series_id=f"de_rev_ce_cis_fcst_{seg.lower()}_{tag}",
+                period_end="2026-08-02", fiscal_year="2026", fiscal_quarter="Q3",
+                geography="Central Europe and CIS", country="", segment=seg, value=v,
+                units="USDm", source_type="forecast",
+                source="desk-central-europe-cis, 2026-08-16",
+                notes=f"FORECAST, not reported. Deere reports FY2026 Q3 on 2026-08-20. "
+                      f"Base Q3 FY2025 = {base[seg]}; implied YoY "
+                      f"{100*(v/base[seg]-1):+.1f}%; confidence {conf}")
+
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     cols = ["series_id", "period_end", "fiscal_year", "fiscal_quarter", "geography",
             "country", "segment", "value", "units", "source_type", "source", "notes"]
@@ -293,11 +323,26 @@ def main():
         print(f"  FY{fy} CF {sum(qs):5} ({'/'.join(map(str,qs))})  avg/qtr {sum(qs)/4:.0f}")
 
     print("\n=== CE&CIS total as % of Western Europe total (diff-in-diff control) ===")
-    for era, yrs in [("pre-war FY2021", ["2021"]), ("war-onset FY2022", ["2022"]),
-                     ("post-exit FY2023-24", ["2023", "2024"]), ("recovery FY2025-26", ["2025", "2026"])]:
+    for era, yrs in [("pre-war FY2020-21", ["2020", "2021"]), ("war-onset FY2022", ["2022"]),
+                     ("exit complete FY2023", ["2023"]), ("trough FY2024", ["2024"]),
+                     ("FY2025", ["2025"]), ("FY2026 H1", ["2026"])]:
         num = sum(CE[(y, q)]["TOTAL"] for y in yrs for q in ("Q1", "Q2", "Q3", "Q4") if (y, q) in CE)
         den = sum(WE[(y, q)] for y in yrs for q in ("Q1", "Q2", "Q3", "Q4") if (y, q) in WE)
-        print(f"  {era:22} CE/WE = {100*num/den:5.1f}%")
+        print(f"  {era:22} CE/WE = {100*num/den:5.1f}%   (CE {num}, WE {den})")
+
+    print("\n=== segment-level CE/WE ratio, last 7 quarters (forecast anchor) ===")
+    for k in sorted(WE_SEG):
+        if k not in CE:
+            continue
+        r = " ".join(f"{s} {100*CE[k][s]/WE_SEG[k][s]:5.1f}%" for s in ("PPA", "SAT", "CF")
+                     if s in CE[k] and WE_SEG[k].get(s))
+        print(f"  FY{k[0]} {k[1]}  {r}")
+
+    print("\n=== Q3/Q2 and Q3/H1 seasonality, CE&CIS total ===")
+    for fy in ("2020", "2021", "2022", "2023", "2024", "2025"):
+        q2, q3 = CE[(fy, "Q2")]["TOTAL"], CE[(fy, "Q3")]["TOTAL"]
+        h1 = CE[(fy, "Q1")]["TOTAL"] + q2
+        print(f"  FY{fy}  Q3/Q2 {q3/q2:.3f}   Q3/H1 {q3/h1:.3f}")
 
 
 if __name__ == "__main__":

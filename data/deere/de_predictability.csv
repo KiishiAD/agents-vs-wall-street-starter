@@ -1067,6 +1067,11 @@ de_op_surprise_variance_share,,,,PPA,margin_component,0.7899,share,computed,"n=2
 de_op_surprise_variance_share,,,,PPA,revenue_component,0.2101,share,computed,"n=21 sd_e_op=49.68% corr(rev,margin)=0.48 window 2021Q2-2026Q2"
 de_op_surprise_variance_share,,,,SAT,margin_component,0.947,share,computed,"n=20 sd_e_op=57.23% corr(rev,margin)=0.12 window 2021Q2-2026Q2"
 de_op_surprise_variance_share,,,,SAT,revenue_component,0.053,share,computed,"n=20 sd_e_op=57.23% corr(rev,margin)=0.12 window 2021Q2-2026Q2"
+de_operating_leverage_beta,,,,AG,d_margin_pct_per_d_revenue_pct,1.152,ratio,computed,n=45 corr=0.43 p=0.0033; implied d(op profit)%/d(revenue)% = 2.15
+de_operating_leverage_beta,,,,CF,d_margin_pct_per_d_revenue_pct,1.7807,ratio,computed,n=43 corr=0.39 p=0.0095; implied d(op profit)%/d(revenue)% = 2.78
+de_operating_leverage_beta,,,,EQUIP,d_margin_pct_per_d_revenue_pct,1.1427,ratio,computed,n=45 corr=0.43 p=0.0033; implied d(op profit)%/d(revenue)% = 2.14
+de_operating_leverage_beta,,,,PPA,d_margin_pct_per_d_revenue_pct,1.3137,ratio,computed,n=21 corr=0.48 p=0.0264; implied d(op profit)%/d(revenue)% = 2.31
+de_operating_leverage_beta,,,,SAT,d_margin_pct_per_d_revenue_pct,0.6667,ratio,computed,n=20 corr=0.12 p=0.6039; implied d(op profit)%/d(revenue)% = 1.67
 de_predictability_by_quarter,,,,AG,Q1|margin AG (bps)|mae,295.1135,bps,computed,n=11
 de_predictability_by_quarter,,,,AG,Q1|revenue AG (%)|mae,6.963,percent_log,computed,n=11
 de_predictability_by_quarter,,,,AG,Q2|margin AG (bps)|mae,318.0933,bps,computed,n=12
@@ -1100,6 +1105,9 @@ de_predictability_ratio,,,,CF,sd_margin_over_sd_revenue,4.5502,ratio,computed,n=
 de_predictability_ratio,,,,EQUIP,sd_margin_over_sd_revenue,2.6621,ratio,computed,n=45 sd_rev=11.02% sd_margin=29.34% PitmanMorgan_p=0.0000 window 2015Q2-2026Q2
 de_predictability_ratio,,,,PPA,sd_margin_over_sd_revenue,2.7171,ratio,computed,n=21 sd_rev=14.97% sd_margin=40.68% PitmanMorgan_p=0.0000 window 2021Q2-2026Q2
 de_predictability_ratio,,,,SAT,sd_margin_over_sd_revenue,5.3975,ratio,computed,n=20 sd_rev=10.20% sd_margin=55.06% PitmanMorgan_p=0.0000 window 2021Q2-2026Q2
+de_predictability_ratio_subperiod,,,,AG,FY2015-FY2020,3.3928,ratio,computed,n=23 sd_rev=9.21% sd_margin=31.26% PitmanMorgan_p=0.0000
+de_predictability_ratio_subperiod,,,,AG,FY2021-FY2026,2.1467,ratio,computed,n=22 sd_rev=12.65% sd_margin=27.16% PitmanMorgan_p=0.0002
+de_predictability_ratio_subperiod,,,,AG,FY2023-FY2026 (down-cycle),1.5418,ratio,computed,n=14 sd_rev=13.39% sd_margin=20.65% PitmanMorgan_p=0.0813
 de_predictability_summary,,,,AG,seasonal|margin_bps|mae,385.7848,bps,computed,margin AG (bps)
 de_predictability_summary,,,,AG,seasonal|margin_bps|mean,-16.126,bps,computed,margin AG (bps)
 de_predictability_summary,,,,AG,seasonal|margin_bps|n,46.0,count,computed,margin AG (bps)
@@ -1327,6 +1335,36 @@ de_predictability_turning_point,,,,PPA,margin PPA (bps)|mae_ratio_turn_vs_calm,0
 de_predictability_turning_point,,,,PPA,revenue PPA (%)|mae_ratio_turn_vs_calm,2.7094,ratio,computed,n_turn=3 MAE_turn=25.4 n_calm=18 MAE_calm=9.4
 de_predictability_turning_point,,,,TOTAL,EPS TOTAL (%)|mae_ratio_turn_vs_calm,0.764,ratio,computed,n_turn=12 MAE_turn=17.9 n_calm=47 MAE_calm=23.5
 de_predictability_turning_point,,,,TOTAL,revenue TOTAL (%)|mae_ratio_turn_vs_calm,1.8221,ratio,computed,n_turn=13 MAE_turn=11.5 n_calm=52 MAE_calm=6.3
+de_q3fy2026_naive_anchor,,,,AG,operating_margin|band_68_high,15.2195,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,AG,operating_margin|band_68_low,7.7676,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,AG,operating_margin|yoy_carry_anchor,11.4936,percent,computed,"mechanical benchmark, not a forecast; historical sd=372.59 MAE=287.38 n=45"
+de_q3fy2026_naive_anchor,,,,CF,net_sales|band_68_high,4566.9871,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,CF,net_sales|band_68_low,3388.8107,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,CF,net_sales|yoy_carry_anchor,3934.038,USDm,computed,"mechanical benchmark, not a forecast; historical sd=14.92 MAE=12.45 n=45"
+de_q3fy2026_naive_anchor,,,,CF,operating_margin|band_68_high,14.9224,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,CF,operating_margin|band_68_low,4.456,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,CF,operating_margin|yoy_carry_anchor,9.6892,percent,computed,"mechanical benchmark, not a forecast; historical sd=523.32 MAE=426.24 n=45"
+de_q3fy2026_naive_anchor,,,,EQUIP,operating_margin|band_68_high,14.0621,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,EQUIP,operating_margin|band_68_low,7.1889,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,EQUIP,operating_margin|yoy_carry_anchor,10.6255,percent,computed,"mechanical benchmark, not a forecast; historical sd=343.66 MAE=266.01 n=45"
+de_q3fy2026_naive_anchor,,,,PPA,net_sales|band_68_high,4273.2681,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,PPA,net_sales|band_68_low,3167.4237,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,PPA,net_sales|yoy_carry_anchor,3679.0285,USDm,computed,"mechanical benchmark, not a forecast; historical sd=14.97 MAE=11.67 n=21"
+de_q3fy2026_naive_anchor,,,,PPA,operating_margin|band_68_high,13.3947,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,PPA,operating_margin|band_68_low,1.2088,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,PPA,operating_margin|yoy_carry_anchor,7.3018,percent,computed,"mechanical benchmark, not a forecast; historical sd=609.29 MAE=484.22 n=21"
+de_q3fy2026_naive_anchor,,,,SAT,net_sales|band_68_high,3913.5209,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,SAT,net_sales|band_68_low,3167.9993,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,SAT,net_sales|yoy_carry_anchor,3521.0838,USDm,computed,"mechanical benchmark, not a forecast; historical sd=10.57 MAE=8.48 n=21"
+de_q3fy2026_naive_anchor,,,,SAT,operating_margin|band_68_high,22.0922,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,SAT,operating_margin|band_68_low,12.8931,percent,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,SAT,operating_margin|yoy_carry_anchor,17.4927,percent,computed,"mechanical benchmark, not a forecast; historical sd=459.96 MAE=333.15 n=21"
+de_q3fy2026_naive_anchor,,,,TOTAL,diluted_eps|band_68_high,6.2728,USD,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,TOTAL,diluted_eps|band_68_low,3.5,USD,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,TOTAL,diluted_eps|yoy_carry_anchor,4.6856,USD,computed,"mechanical benchmark, not a forecast; historical sd=29.17 MAE=22.33 n=59"
+de_q3fy2026_naive_anchor,,,,TOTAL,net_sales|band_68_high,13768.0382,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,TOTAL,net_sales|band_68_low,11510.247,USDm,computed,anchor +/- one historical one-quarter-ahead error sd; NOT a forecast
+de_q3fy2026_naive_anchor,,,,TOTAL,net_sales|yoy_carry_anchor,12588.6267,USDm,computed,"mechanical benchmark, not a forecast; historical sd=8.96 MAE=7.37 n=65"
 de_revenue_actual_usdm,,2008,3,TOTAL,net_sales_and_revenues,7738.7,USDm,Deere 8-K earnings releases + SEC EDGAR XBRL companyfacts CIK 315189,
 de_revenue_actual_usdm,,2009,1,TOTAL,net_sales_and_revenues,5146.0,USDm,Deere 8-K earnings releases + SEC EDGAR XBRL companyfacts CIK 315189,
 de_revenue_actual_usdm,,2009,2,TOTAL,net_sales_and_revenues,6748.0,USDm,Deere 8-K earnings releases + SEC EDGAR XBRL companyfacts CIK 315189,

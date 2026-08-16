@@ -537,6 +537,82 @@ for lab, key, unit in (("revenue TOTAL", ("revenue", "TOTAL", "yoy_carry"), "%")
     P(f"  {lab:14s} ({unit}): " + "  ".join(f"{k[:4]}:{val:+.0f}" for k, val in v))
 P("")
 
+P("=" * 78)
+P("TEST 4  --  ROBUSTNESS: SUB-PERIODS, OPERATING LEVERAGE, AND THE Q3 FY2026 ANCHOR")
+P("=" * 78)
+P("(a) sub-period stability of the ratio sd(margin)/sd(revenue), AG segment")
+P(f"{'window':18s} {'n':>3s} {'sd_rev':>7s} {'sd_mgn':>7s} {'ratio':>6s} {'p':>7s}")
+subper = {}
+for name, lo, hi in (("FY2015-FY2020", 2015, 2020), ("FY2021-FY2026", 2021, 2026),
+                     ("FY2023-FY2026 (down-cycle)", 2023, 2026)):
+    a = err.get(("revenue", "AG", "yoy_carry"), {})
+    b = err.get(("margin_log", "AG", "yoy_carry"), {})
+    ks_, x_, y_ = paired(a, b)
+    sel = [i for i, k in enumerate(ks_) if lo <= int(k[:4]) <= hi]
+    if len(sel) < 6:
+        continue
+    xx = [x_[i] for i in sel]
+    yy = [y_[i] for i in sel]
+    F, r, t, df, pv = pitman_morgan(yy, xx)
+    subper[name] = (len(sel), st.stdev(xx), st.stdev(yy), st.stdev(yy) / st.stdev(xx), pv)
+    P(f"{name:18s} {len(sel):3d} {st.stdev(xx):7.2f} {st.stdev(yy):7.2f} "
+      f"{st.stdev(yy)/st.stdev(xx):6.2f} {pv:7.4f}")
+P("")
+
+P("(b) operating leverage: regression of margin error on revenue error")
+P("    e_margin(%) = alpha + beta * e_revenue(%).  beta > 0 means a revenue miss")
+P("    MECHANICALLY drags margin with it, so the two ranges are NOT independent.")
+P(f"{'segment':10s} {'n':>3s} {'corr':>6s} {'beta':>6s} {'t':>6s} {'p':>7s} "
+  f"{'implied d(OP)/d(Rev)':>21s}")
+lev = {}
+for s_ in SEGMENTS:
+    a = err.get(("revenue", s_, "yoy_carry"), {})
+    b = err.get(("margin_log", s_, "yoy_carry"), {})
+    ks_, x_, y_ = paired(a, b)
+    if len(ks_) < 8:
+        continue
+    r = pearson(x_, y_)
+    beta = r * st.stdev(y_) / st.stdev(x_)
+    dfree = len(ks_) - 2
+    tt = r * math.sqrt(dfree / max(1e-12, 1 - r * r))
+    pv = t_two_sided_p(tt, dfree)
+    lev[s_] = (len(ks_), r, beta, pv)
+    P(f"{s_:10s} {len(ks_):3d} {r:6.2f} {beta:6.2f} {tt:6.2f} {pv:7.4f} "
+      f"{1 + beta:21.2f}")
+P("")
+
+P("(c) Naive yoy_carry anchors for Q3 FY2026 (NOT a forecast -- the mechanical")
+P("    benchmark, plus the empirically measured one-quarter-ahead error band).")
+K = "2026Q3"
+anchors = {}
+for lab, field, kind, seg in (("net sales & revenues (USDm)", "total_rev", "revenue", "TOTAL"),
+                              ("PPA net sales (USDm)", "sales_PPA", "revenue", "PPA"),
+                              ("SAT net sales (USDm)", "sales_SAT", "revenue", "SAT"),
+                              ("CF net sales (USDm)", "sales_CF", "revenue", "CF"),
+                              ("diluted EPS (USD)", "eps_diluted", "eps", "TOTAL")):
+    x4, x1, x5 = get(lag(K, 4), field), get(lag(K, 1), field), get(lag(K, 5), field)
+    if None in (x4, x1, x5) or min(x4, x1, x5) <= 0:
+        continue
+    f = x4 * (x1 / x5)
+    d = desc(list(err.get((kind, seg, "yoy_carry"), {}).values()))
+    lo68, hi68 = f * math.exp(-d["sd"] / 100), f * math.exp(d["sd"] / 100)
+    anchors[lab] = (f, d["sd"], d["mae"], lo68, hi68, d["n"])
+    P(f"  {lab:30s} anchor {f:9.2f}   sd {d['sd']:5.1f}%  MAE {d['mae']:5.1f}%  "
+      f"68% band [{lo68:8.2f}, {hi68:8.2f}]  (n={d['n']})")
+for seg in ("PPA", "SAT", "CF", "AG", "EQUIP"):
+    m4, m1, m5 = (get(lag(K, 4), f"margin_{seg}"), get(lag(K, 1), f"margin_{seg}"),
+                  get(lag(K, 5), f"margin_{seg}"))
+    if None in (m4, m1, m5):
+        continue
+    f = m4 + (m1 - m5)
+    d = desc(list(err.get(("margin_bps", seg, "yoy_carry"), {}).values()))
+    anchors[f"{seg} operating margin (%)"] = (f, d["sd"], d["mae"],
+                                              f - d["sd"] / 100, f + d["sd"] / 100, d["n"])
+    P(f"  {seg + ' operating margin (%)':30s} anchor {f:9.2f}   sd {d['sd']:5.0f}bps "
+      f"MAE {d['mae']:5.0f}bps  68% band [{f - d['sd']/100:8.2f}, "
+      f"{f + d['sd']/100:8.2f}]  (n={d['n']})")
+P("")
+
 # ------------------------------------------------------------------ summary rows in CSV
 def emit_stat(series_id, segment, component, value, units, notes):
     if value is None or (isinstance(value, float) and not math.isfinite(value)):
@@ -579,6 +655,26 @@ for lab, (nt, mt, nc, mc, rt) in tp_tbl.items():
               f"{lab}|mae_ratio_turn_vs_calm", rt, "ratio",
               f"n_turn={nt} MAE_turn={mt:.1f} n_calm={nc} MAE_calm={mc:.1f}")
 
+for nm, (n_s, sdr, sdm, rt, pv) in subper.items():
+    emit_stat("de_predictability_ratio_subperiod", "AG", nm, rt, "ratio",
+              f"n={n_s} sd_rev={sdr:.2f}% sd_margin={sdm:.2f}% PitmanMorgan_p={pv:.4f}")
+for s_, (n_s, r, beta, pv) in lev.items():
+    emit_stat("de_operating_leverage_beta", s_, "d_margin_pct_per_d_revenue_pct", beta,
+              "ratio", f"n={n_s} corr={r:.2f} p={pv:.4f}; "
+                       f"implied d(op profit)%/d(revenue)% = {1+beta:.2f}")
+for lab, (f, sd_, mae_, lo_, hi_, n_) in anchors.items():
+    unit = "percent" if "margin" in lab else ("USD" if "EPS" in lab else "USDm")
+    seg_ = lab.split()[0] if lab.split()[0] in SEGMENTS else "TOTAL"
+    metric = ("operating_margin" if "margin" in lab else
+              ("diluted_eps" if "EPS" in lab else "net_sales"))
+    emit_stat("de_q3fy2026_naive_anchor", seg_, f"{metric}|yoy_carry_anchor", f, unit,
+              f"mechanical benchmark, not a forecast; historical sd={sd_:.2f} "
+              f"MAE={mae_:.2f} n={n_}")
+    emit_stat("de_q3fy2026_naive_anchor", seg_, f"{metric}|band_68_low", lo_, unit,
+              "anchor +/- one historical one-quarter-ahead error sd; NOT a forecast")
+    emit_stat("de_q3fy2026_naive_anchor", seg_, f"{metric}|band_68_high", hi_, unit,
+              "anchor +/- one historical one-quarter-ahead error sd; NOT a forecast")
+
 os.makedirs(OUTDIR, exist_ok=True)
 FIELDS = ["series_id", "period_end", "fiscal_year", "fiscal_quarter", "segment",
           "component", "value", "units", "source", "notes"]
@@ -590,7 +686,7 @@ with open(CSVPATH, "w", newline="") as fh:
     w.writerows(ROWS)
 P(f"wrote {len(ROWS)} rows -> {CSVPATH}")
 
-json.dump({"ratio_tbl": ratio_tbl, "decomp": decomp, "eps_shares": eps_shares,
+json.dump({"subper": subper, "lev": lev, "anchors": anchors, "ratio_tbl": ratio_tbl, "decomp": decomp, "eps_shares": eps_shares,
            "tp_tbl": tp_tbl, "ent": ent, "guid": guid_cmp,
            "byq": {f"{a}|{b}": v for (a, b), v in byq.items()},
            "turn": sorted(turn)},

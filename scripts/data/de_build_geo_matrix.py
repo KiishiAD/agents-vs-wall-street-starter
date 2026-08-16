@@ -38,6 +38,10 @@ def collect():
             b["pubdate"] = f[:10]
             b["problems"] = (M.validate_geo(b) if b["kind"] == "geo"
                              else M.validate_pl(b))
+            if b["problems"] and b["kind"] == "pl" and M.repair_pl(b):
+                b["problems"] = M.validate_pl(b)
+                if b["problems"]:
+                    b.pop("repaired", None)
             blocks.append(b)
     return blocks
 
@@ -113,6 +117,18 @@ def main():
     unresolved = resolve_unknown_spans(blocks)
     infer_quarters(blocks)
 
+    # The Q1 FY2019 10-Q labels its table only in prose ("In the first quarter
+    # of 2019..."), with no period-end date. Pin the date from the dated
+    # three-month columns of the same quarter elsewhere in the corpus.
+    qdate = {}
+    for pe, (fy, q) in QEND.items():
+        if q:
+            qdate[(fy, q)] = pe
+    for b in blocks:
+        p = b["period"]
+        if p["period_end"] is None and p.get("explicit_q"):
+            p["period_end"] = qdate.get((p["fy"], p["explicit_q"]))
+
     bad = [b for b in blocks if b["problems"]]
     good = [b for b in blocks if not b["problems"]]
 
@@ -136,31 +152,44 @@ def main():
                 cells[key0 + (s, "Total", "")][t[i]].append(b["src"])
             cells[key0 + ("Total", "Total", "")][t[len(segs)]].append(b["src"])
         else:
+            rep = set(b.get("repaired") or [])
             for name, (spans, v) in b["rows"].items():
+                tag = b["src"] + ("|reconstructed" if name in rep else "")
                 for i, s in enumerate(spans):
-                    cells[key0 + (s, "", name)][v[i]].append(b["src"])
-                cells[key0 + ("Total", "", name)][v[-1]].append(b["src"])
+                    cells[key0 + (s, "", name)][v[i]].append(tag)
+                cells[key0 + ("Total", "", name)][v[-1]].append(tag)
 
     conflicts = [(k, dict(vv)) for k, vv in cells.items() if len(vv) > 1]
 
-    # ---- derive Q4 = FY - nine months --------------------------------------
+    # ---- derive quarters that are only disclosed cumulatively --------------
+    # Q2 = six - three, Q3 = nine - six, Q4 = twelve - nine.  Only used where
+    # the three-month column itself is absent from every filing.
     derived = {}
     by_span = defaultdict(dict)
+    three_by_q = defaultdict(dict)   # (scheme, fy, quarter) -> disclosed cells
     for k, vv in cells.items():
         sch, span, pe, fy, seg, geo, pl = k
-        by_span[(sch, span, fy)][(seg, geo, pl)] = (sorted(vv, key=lambda v: -len(vv[v]))[0], pe)
-    for (sch, span, fy), d in list(by_span.items()):
-        if span != "Twelve":
-            continue
-        nine = by_span.get((sch, "Nine", fy))
-        if not nine:
-            continue
-        out = {}
-        for kk, (val, pe) in d.items():
-            if kk in nine:
-                out[kk] = val - nine[kk][0]
-        if out:
-            derived[(sch, fy)] = (out, d[list(d)[0]][1], nine[list(nine)[0]][1])
+        val = sorted(vv, key=lambda v: -len(vv[v]))[0]
+        by_span[(sch, span, fy)][(seg, geo, pl)] = (val, pe)
+        if span == "Three":
+            three_by_q[(sch, fy, QEND[pe][1])][(seg, geo, pl)] = val
+
+    LADDER = [(2, "Six", "Three"), (3, "Nine", "Six"), (4, "Twelve", "Nine")]
+    for (sch, span, fy) in sorted(by_span):
+        for q, big, small in LADDER:
+            if span != big:
+                continue
+            if three_by_q.get((sch, fy, q)):
+                continue  # the quarter is disclosed directly, no need to derive
+            top = by_span.get((sch, big, fy))
+            base = by_span.get((sch, small, fy))
+            if not top or not base:
+                continue
+            out = {kk: val - base[kk][0] for kk, (val, pe) in top.items()
+                   if kk in base}
+            if out:
+                derived[(sch, fy, q)] = (
+                    out, top[list(top)[0]][1], base[list(base)[0]][1], big, small)
 
     # ---- write csv ----------------------------------------------------------
     rows = []
@@ -168,7 +197,9 @@ def main():
     for k, vv in cells.items():
         sch, span, pe, fy, seg, geo, pl = k
         val = sorted(vv, key=lambda v: -len(vv[v]))[0]
-        srcs = sorted(set(vv[val]))
+        tags = sorted(set(vv[val]))
+        srcs = sorted({t.split("|")[0] for t in tags})
+        reconstructed = all("|reconstructed" in t for t in tags)
         src_of[k] = srcs
         if span == "Three":
             fq = "Q%d" % QEND[pe][1]
@@ -182,6 +213,10 @@ def main():
                 "pre-FY2021 reportable segments (Agriculture & Turf / Construction & Forestry)"
         if geo == "Total" or seg == "Total":
             note = (note + "; " if note else "") + "disclosed total, do not re-sum with cells"
+        if reconstructed:
+            note = (note + "; " if note else "") + (
+                "cell reconstructed from the column residual: the source table "
+                "cell was merged by the pdf-to-markdown conversion")
         if len(srcs) > 1:
             note = (note + "; " if note else "") + "confirmed in %d filings" % len(srcs)
         rows.append(dict(
@@ -190,15 +225,17 @@ def main():
             value=val, units="USDm", basis="rev-rec",
             source="filings/" + srcs[0], notes=note))
 
-    for (sch, fy), (out, fy_pe, nine_pe) in sorted(derived.items()):
+    SPANWORD = {"Six": "six-month", "Nine": "nine-month", "Twelve": "fiscal-year"}
+    for (sch, fy, q), (out, top_pe, base_pe, big, small) in sorted(derived.items()):
         for (seg, geo, pl), val in out.items():
             rows.append(dict(
-                series_id="de_revrec_net_sales", period_end=fy_pe, fiscal_year=fy,
-                fiscal_quarter="Q4", segment=seg, geography=geo, product_line=pl,
-                value=val, units="USDm", basis="rev-rec",
+                series_id="de_revrec_net_sales", period_end=top_pe, fiscal_year=fy,
+                fiscal_quarter="Q%d" % q, segment=seg, geography=geo,
+                product_line=pl, value=val, units="USDm", basis="rev-rec",
                 source="derived",
-                notes=("derived: fiscal-year %s column minus nine-months-ended %s column"
-                       % (fy_pe, nine_pe)) +
+                notes=("derived: %s column ended %s minus %s column ended %s "
+                       "(the three-month column is not disclosed for this quarter)"
+                       % (SPANWORD[big], top_pe, SPANWORD[small], base_pe)) +
                       ("; pre-FY2021 reportable segments" if sch == "old" else "") +
                       ("; disclosed total, do not re-sum with cells"
                        if (geo == "Total" or seg == "Total") else "")))
@@ -243,9 +280,10 @@ def main():
               (k[0], k[1], k[2], k[3] or "n/a", len(bs), len(ok),
                "PASS" if ok else "FAIL"))
 
-    print("\n== derived Q4 quarters ==")
-    for (sch, fy) in sorted(derived):
-        print("  %-4s FY%d Q4 = FY column - nine-month column" % (sch, fy))
+    print("\n== quarters derived from cumulative columns ==")
+    for (sch, fy, q) in sorted(derived):
+        _, _, _, big, small = derived[(sch, fy, q)]
+        print("  %-4s FY%d Q%d = %s column - %s column" % (sch, fy, q, big, small))
 
     print("\n== rejected blocks (not used) ==")
     for b in bad:

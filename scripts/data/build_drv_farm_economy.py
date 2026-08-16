@@ -265,12 +265,68 @@ def ers_extract(cache):
 
 
 # --------------------------------------------------------------------- 2. NASS land
+CHART_KINDS = {r"Farm\s+Real\s+Estate\s+Value": "us_farmland_values",
+               r"Cropland\s+Value": "us_cropland_values",
+               r"Pasture\s+Value": "us_pasture_values"}
+
+
+def _parse_land_charts(lines):
+    """
+    Each NASS Land Values summary opens with a 15-year US trend chart whose data
+    labels are printed on the page.  Those charts carry NASS's CURRENT (revised)
+    history, whereas the 5-year regional tables later in the same PDF are frozen
+    at the values published in the covering years.  The 2012 Census of Agriculture
+    benchmarking revised the pre-2013 series materially (e.g. 2012 farm real estate
+    2,650 -> 2,520 USD/acre), so the charts are the correct primary source.
+
+    Layout trick: pdftotext -layout preserves horizontal position, so sorting the
+    data labels by column reproduces year order.  The x-axis line (>=5 consecutive
+    years) supplies the year vector and the left cut-off that excludes y-axis labels.
+    """
+    out = {}
+    for i, ln in enumerate(lines):
+        if "...." in ln:                       # table of contents
+            continue
+        sid = None
+        for pat, s in CHART_KINDS.items():
+            if re.search(r"Average\s+" + pat + r"\s*[-–—]\s*United\s+States", ln):
+                sid = s
+                break
+        if sid is None or sid in out:
+            continue
+        blk = lines[i + 1:i + 34]
+        axis = None
+        for j, b in enumerate(blk):
+            toks = [(m.start(), int(m.group())) for m in re.finditer(r"\b(?:19|20)\d{2}\b", b)]
+            if len(toks) >= 5 and all(toks[k + 1][1] - toks[k][1] == 1
+                                      for k in range(len(toks) - 1)):
+                axis = (j, toks)
+                break
+        if not axis:
+            continue
+        j, toks = axis
+        years = [t[1] for t in toks]
+        c0 = toks[0][0]
+        pts = []
+        for b in blk[:j]:
+            for m in re.finditer(r"\b\d{1,2},\d{3}\b|\b\d{3,5}\b", b):
+                if m.start() < c0 - 4:          # y-axis scale labels
+                    continue
+                pts.append((m.start(), int(m.group().replace(",", ""))))
+        pts.sort()
+        if len(pts) == len(years):              # refuse to guess on any mismatch
+            out[sid] = dict(zip(years, [p[1] for p in pts]))
+    return out
+
+
 def nass_land_extract(cache):
-    rows_by_key = {}          # (series_id, year) -> (pubdate, value, stem)
-    all_obs = []              # for validation: (series_id, year, value, stem)
+    chart_best = {}     # (sid, year) -> (pubdate, value, stem)
+    table_best = {}     # (sid, year) -> (pubdate, value, stem)
+    all_obs = []        # (sid, year, value, stem, 'chart'|'table') for validation
     hdr_re = re.compile(
         r"(Farm Real Estate|Cropland|Pasture)[ ,]*Average Value per Acre.*?"
         r"(\d{4})\s*[-–—]\s*(\d{4})", re.I)
+
     for stem, pubdate in NASS_LAND_REPORTS:
         url = "https://www.nass.usda.gov/Publications/Todays_Reports/reports/%s.pdf" % stem
         pdf = os.path.join(cache, "lv", "%s.pdf" % stem)
@@ -278,11 +334,22 @@ def nass_land_extract(cache):
         txt = subprocess.run(["pdftotext", "-layout", pdf, "-"],
                              capture_output=True, text=True, check=True).stdout
         lines = txt.splitlines()
+
+        # ---- charts (primary)
+        for sid, series in _parse_land_charts(lines).items():
+            for y, v in series.items():
+                if not (YEAR_MIN <= y <= YEAR_MAX):
+                    continue
+                all_obs.append((sid, y, float(v), stem, "chart"))
+                prev = chart_best.get((sid, y))
+                if prev is None or pubdate > prev[0]:
+                    chart_best[(sid, y)] = (pubdate, float(v), stem)
+
+        # ---- 5-year regional tables (cross-check / fallback)
         i = 0
         while i < len(lines):
             ln = lines[i]
             m = hdr_re.search(ln)
-            # skip table-of-contents lines (dot leaders) and the irrigated split table
             if not m or "...." in ln or "Irrigated" in ln:
                 i += 1
                 continue
@@ -291,44 +358,51 @@ def nass_land_extract(cache):
             if kind not in LAND_SERIES or y1 - y0 != 4:
                 i += 1
                 continue
-            sid, label = LAND_SERIES[kind]
-            # Find the national total row inside the next ~130 lines.
-            # NASS labelled it "48 States" in the 2010 and earlier summaries and
-            # "United States" from 2011 onward; both exclude Alaska and Hawaii,
-            # and the values agree exactly in the overlapping years (verified).
+            sid = LAND_SERIES[kind][0]
+            # NASS labelled the national total "48 States" through the 2010
+            # summary and "United States" from 2011; both exclude AK and HI.
             for j in range(i + 1, min(i + 130, len(lines))):
                 s = lines[j].strip()
                 if not (s.startswith("United States") or s.startswith("48 States")):
                     continue
-                total_label = "48 States" if s.startswith("48 States") else "United States"
                 vals = [num(t) for t in re.findall(r"[\d,]+(?:\.\d+)?", s.split("...")[-1])]
-                vals = [v for v in vals if v is not None and v >= 100]
+                vals = [v for v in vals if v is not None and v >= 100][:5]
                 if len(vals) < 5:
                     continue
-                vals = vals[:5]
                 for off, v in enumerate(vals):
                     y = y0 + off
                     if not (YEAR_MIN <= y <= YEAR_MAX):
                         continue
-                    all_obs.append((sid, y, v, stem))
-                    prev = rows_by_key.get((sid, y))
+                    all_obs.append((sid, y, v, stem, "table"))
+                    prev = table_best.get((sid, y))
                     if prev is None or pubdate > prev[0]:
-                        rows_by_key[(sid, y)] = (pubdate, v, stem, total_label)
+                        table_best[(sid, y)] = (pubdate, v, stem)
                 break
             i += 1
+
+    label_by_sid = {v[0]: v[1] for v in LAND_SERIES.values()}
     rows = []
-    for (sid, y), (pubdate, v, stem) in sorted(rows_by_key.items()):
-        refnote = ("Survey reference date January 1 of the year (NASS moved the "
-                   "reference date to June 1 from the 2011 report onward)."
-                   if y <= 2010 else
+    for key in sorted(set(chart_best) | set(table_best)):
+        sid, y = key
+        if key in chart_best:
+            pubdate, v, stem = chart_best[key]
+            origin = ("Taken from the US trend chart of the newest summary covering this "
+                      "year, which carries NASS's revised history; the frozen 5-year "
+                      "regional tables in older summaries can be up to ~5 percent higher "
+                      "for pre-2013 years because of 2012-Census benchmarking.")
+        else:
+            pubdate, v, stem = table_best[key]
+            origin = ("Taken from the 5-year regional table (no parseable trend chart "
+                      "covers this year). May predate later NASS revisions.")
+        refnote = ("Survey reference date January 1 of the year (NASS moved the reference "
+                   "date to June 1 from the 2011 summary onward -- a definition change, "
+                   "not a data error)." if y <= 2010 else
                    "Survey reference date June 1 of the year.")
         rows.append(row(sid, y, v, "USD/acre", "api",
                         "https://www.nass.usda.gov/Publications/Todays_Reports/reports/%s.pdf" % stem,
                         "USDA NASS Land Values summary, US average %s value per acre. "
-                        "%s Published %s; value taken from the newest report covering "
-                        "this year. period_end set to Dec-31 for panel consistency."
-                        % (LAND_SERIES[[k for k, v2 in LAND_SERIES.items() if v2[0] == sid][0]][1],
-                           refnote, pubdate)))
+                        "%s %s Published %s. period_end set to Dec-31 for panel consistency."
+                        % (label_by_sid[sid], refnote, origin, pubdate)))
     return rows, all_obs
 
 
@@ -598,8 +672,26 @@ def fred_extract(cache):
 
 
 # --------------------------------------------------------------------- validation
-def validate(ers_raw, land_obs, crop_x, psd_x, bea_annual):
+def _corr(pairs):
+    n = len(pairs)
+    if n < 5:
+        return None
+    mx = sum(p[0] for p in pairs) / n
+    my = sum(p[1] for p in pairs) / n
+    sxy = sum((p[0] - mx) * (p[1] - my) for p in pairs)
+    sxx = sum((p[0] - mx) ** 2 for p in pairs)
+    syy = sum((p[1] - my) ** 2 for p in pairs)
+    if sxx <= 0 or syy <= 0:
+        return None
+    return sxy / (sxx * syy) ** 0.5
+
+
+def validate(ers_raw, land_obs, crop_x, psd_x, bea_annual, all_rows):
     out = []
+    byser = defaultdict(dict)
+    for r in all_rows:
+        if r["value"] != "":
+            byser[r["series_id"]][int(r["fiscal_year"])] = float(r["value"])
 
     def add(name, a, b, la, lb, tol_pct):
         if a is None or b is None:
@@ -609,30 +701,61 @@ def validate(ers_raw, land_obs, crop_x, psd_x, bea_annual):
         out.append("%-5s %-52s %s=%.4g  %s=%.4g  diff=%.2f%%"
                    % ("OK" if d <= tol_pct else "FLAG", name, la, a, lb, b, d))
 
-    # 1-2. corn acreage: ERS Feed Grains vs USDA FAS PSD (different USDA agencies/systems)
-    for y in (2023, 2024, 2025):
+    # 1-2. corn acreage: ERS Feed Grains vs USDA FAS PSD (different USDA agencies/systems,
+    #      but note both ultimately trace back to NASS/WAOB -- see companion .md)
+    for y in (2023, 2024, 2025, 2026):
         ers_h = crop_x.get(("us_harvested_acres_corn", y))
         psd_h = psd_x.get(("us_corn_area_harvested", y))
         add("US corn harvested acres %d  ERS-FeedGrains vs FAS-PSD" % y,
             ers_h, (psd_h * 1000 * 2.4710538) / 1000 if psd_h else None,
             "ERS(Macre)", "PSD(Macre)", 1.5)
     # 3. soybean acreage cross-check
-    for y in (2023, 2024):
+    for y in (2023, 2024, 2025):
         ers_h = crop_x.get(("us_harvested_acres_soybean", y))
         psd_h = psd_x.get(("us_soybean_area_harvested", y))
         add("US soybean harvested acres %d  ERS-OilCrops vs FAS-PSD" % y,
             ers_h, (psd_h * 2.4710538) if psd_h else None, "ERS(Macre)", "PSD(Macre)", 1.5)
-    # 4. NASS land values: overlapping years published in two different annual reports
-    byk = defaultdict(dict)
-    for sid, y, v, stem in land_obs:
-        byk[(sid, y)][stem] = v
-    checked = 0
-    for (sid, y), d in sorted(byk.items()):
-        if len(d) >= 2 and checked < 4:
-            stems = sorted(d)
-            a, b = d[stems[0]], d[stems[-1]]
-            add("%s %d  %s vs %s" % (sid, y, stems[0], stems[-1]), a, b, stems[0], stems[-1], 3.0)
-            checked += 1
+    # 4a. NASS land values: same year read from the CHART of two different annual
+    #     summaries -- these should agree exactly once NASS has settled a year.
+    charts = defaultdict(dict)
+    tables = defaultdict(dict)
+    for sid, y, v, stem, kind in land_obs:
+        (charts if kind == "chart" else tables)[(sid, y)][stem] = v
+    disagree = []
+    npairs = 0
+    for (sid, y), d in sorted(charts.items()):
+        if len(d) < 2:
+            continue
+        npairs += 1
+        smin = min(d, key=lambda s: d[s])
+        smax = max(d, key=lambda s: d[s])
+        if d[smax] != d[smin]:
+            disagree.append((abs(d[smax] - d[smin]) / d[smin] * 100, sid, y,
+                             smin, smax, d[smin], d[smax]))
+    out.append("INFO  %-52s %d year-values appear in >=2 summaries' charts; %d differ "
+               "(all are NASS revisions -- newest chart is used)"
+               % ("NASS chart-vs-chart across separate summaries", npairs, len(disagree)))
+    for pct, sid, y, s0, s1, a, b in sorted(disagree, reverse=True)[:3]:
+        add("%s %d  chart(%s) vs chart(%s)" % (sid, y, s0, s1), a, b, s0, s1, 1.0)
+    same = npairs - len(disagree)
+    out.append("OK    %-52s %d of %d chart year-values agree EXACTLY across summaries"
+               % ("NASS chart reproducibility", same, npairs))
+    # 4b. chart (revised) vs 5-year table (as-published) -- quantifies NASS revisions
+    revs = []
+    for (sid, y), d in sorted(tables.items()):
+        c = charts.get((sid, y))
+        if not c:
+            continue
+        newest_tbl = d[sorted(d)[-1]]
+        newest_cht = c[sorted(c)[-1]]
+        if newest_tbl != newest_cht:
+            revs.append((abs(newest_tbl - newest_cht) / newest_cht * 100, sid, y,
+                         newest_tbl, newest_cht))
+    out.append("INFO  %-52s %d of %d year-values revised by NASS after first publication"
+               % ("NASS revised-chart vs as-published-table", len(revs), len(tables)))
+    for pct, sid, y, t, c in sorted(revs, reverse=True)[:3]:
+        out.append("INFO  %-52s table=%.0f chart=%.0f  revision=%.2f%% (chart used)"
+                   % ("%s %d NASS revision" % (sid, y), t, c, pct))
     # 5. ERS internal identity: crops + livestock == all commodities
     for y in (2015, 2020, 2024):
         c = ers_raw.get((CURRENT_VINTAGE, "CRAUSCO--VAP", y))
@@ -651,7 +774,50 @@ def validate(ers_raw, land_obs, crop_x, psd_x, bea_annual):
             out.append("%-5s %-52s USDA=%+.1f%%  BEA=%+.1f%%  (independent agencies)"
                        % ("OK" if same else "FLAG",
                           "US farm income YoY sign %d USDA-ERS vs BEA" % y, du, db))
-    # 7. ERS vintage revision magnitudes (informational, always reported)
+    # 7. Cross-source correlation checks between genuinely different data producers
+    for a_sid, b_sid, label in [
+        ("br_soybean_production", "br_crop_production_index",
+         "Brazil: FAS-PSD soybean output vs World Bank crop index"),
+        ("eu_ag_output", "eu_ag_value_added_usd",
+         "EU: Eurostat ag output (EUR) vs World Bank ag value added (USD)"),
+        ("us_net_farm_income", "us_farm_proprietors_income_bea",
+         "US: USDA-ERS net farm income vs BEA farm proprietors' income"),
+        ("us_net_farm_income", "us_farm_capex_vehicles_machinery",
+         "US: net farm income vs farm machinery capex (driver plausibility)"),
+        ("us_farmland_values", "us_farm_real_estate_assets",
+         "US: NASS farmland $/acre vs ERS farm real estate assets"),
+    ]:
+        yrs = sorted(set(byser.get(a_sid, {})) & set(byser.get(b_sid, {})))
+        pairs = [(byser[a_sid][y], byser[b_sid][y]) for y in yrs]
+        c = _corr(pairs)
+        out.append("%-5s %-52s r=%s over n=%d (%s)"
+                   % ("OK" if (c is not None and c > 0.5) else
+                      ("FLAG" if c is not None else "SKIP"),
+                      label, ("%.3f" % c) if c is not None else "n/a", len(pairs),
+                      "%d-%d" % (yrs[0], yrs[-1]) if yrs else "-"))
+
+    # 8. CORPUS cross-check.  Deere's own Q1 FY2026 earnings call (2026-02-19) reads the
+    #    same USDA Feb-2026 release out loud.  The corpus is authoritative, so this is
+    #    the single strongest validation of the headline forecast numbers.
+    def pct(sid, y0, y1):
+        a, b = byser.get(sid, {}).get(y0), byser.get(sid, {}).get(y1)
+        return None if (a in (None, 0) or b is None) else (b / a - 1) * 100
+
+    for sid, y0, y1, claim, lo, hi in [
+        ("us_net_cash_farm_income", 2025, 2026,
+         "Deere Q1FY26 call: 2026 US net cash farm income 'up around 3%'", 2.0, 4.0),
+        ("us_govt_farm_payments", 2025, 2026,
+         "Deere Q1FY26 call: increase 'driven by more government payments'", 5.0, 1e9),
+        ("us_crop_cash_receipts", 2025, 2026,
+         "Deere Q1FY26 call: crop cash receipts 'up slightly'", 0.0, 5.0),
+    ]:
+        p = pct(sid, y0, y1)
+        out.append("%-5s %-52s extracted=%+.2f%%  (expected %s)"
+                   % ("OK" if (p is not None and lo <= p <= hi) else "FLAG",
+                      claim[:52], p if p is not None else float("nan"),
+                      "%.0f..%.0f%%" % (lo, min(hi, 999))))
+
+    # 9. ERS vintage revision magnitudes (informational, always reported)
     for y in (2024, 2025):
         vals = [(t, ers_raw.get((t, "FIAUSNTFI--P", y)) )
                 for t, _, _ in ERS_VINTAGES]
@@ -726,7 +892,7 @@ def main():
               % (sid, len(rs), rs[0]["period_end"], rs[-1]["period_end"], rs[0]["units"]))
 
     print("\n===== VALIDATION =====")
-    for line in validate(ers_raw, land_obs, crop_x, psd_x, bea_annual):
+    for line in validate(ers_raw, land_obs, crop_x, psd_x, bea_annual, rows):
         print(line)
 
 

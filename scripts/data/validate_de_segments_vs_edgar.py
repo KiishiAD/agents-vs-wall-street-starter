@@ -27,36 +27,64 @@ CIK = "0000315189"
 CSV_PATH = "/Users/cor/Documents/projects/agents-vs-wall-street-starter/data/deere/de_segments_modern.csv"
 
 SEGS = {
+    # post-ASU 2023-07 axis member labels
     "Production & Precision Agriculture (PPA)": "de_ppa",
-    "Production and precision agriculture": "de_ppa",
     "Small Agriculture & Turf (SAT)": "de_sat",
-    "Small agriculture and turf": "de_sat",
     "Construction & Forestry (CF)": "de_cf",
+    # pre-ASU axis member labels
+    "Production & Precision Ag (PPA)": "de_ppa",
+    "Small Ag & Turf (SAT)": "de_sat",
+    "Production and precision agriculture": "de_ppa",
+    "Small agriculture and turf": "de_sat",
     "Construction and forestry": "de_cf",
+    # FY2021-FY2022 axis member labels
+    "Production & Precision Ag": "de_ppa",
+    "Small Ag & Turf": "de_sat",
+    "Construction & Forestry": "de_cf",
 }
 
 
-def get(url, binary=False):
+def ctx_segment(line):
+    """A dimension context is ' | '-joined axis members in arbitrary order.
+    Return (segment_key, frozenset(other members)) or (None, None)."""
+    parts = [p.strip() for p in line.split(" | ")]
+    hits = [p for p in parts if p in SEGS]
+    if len(hits) != 1:
+        return None, None
+    return SEGS[hits[0]], frozenset(p for p in parts if p != hits[0])
+
+# Lines that may appear INSIDE a segment block without ending it.
+SUBHEADERS = {"Net Sales and Revenues", "Operating Profit", "Identifiable Assets",
+              "Net Sales and Revenues:", "Operating Profit:", "Operating Profit (Loss)",
+              "Net Sales", "Operating Segment"}
+PCT_CELL = re.compile(r"^\(?-?[\d,.]+\s*%\)?$")
+ROW_LABEL = re.compile(
+    r"^(%|Total Assets|Total operating profit|Segment operating profit|Operating profit"
+    r"|Net sales|External |Intersegment|Cost of sales|Interest expense|Other segment items"
+    r"|Depreciation|Net income|Total segment)")
+
+OP_LABELS = {"Segment operating profit", "Total operating profit", "Operating profit"}
+NS_LABELS = {"External net sales", "Net sales", "Net sales and revenues"}
+
+
+def get(url):
     req = urllib.request.Request(url, headers={"User-Agent": UA})
     with urllib.request.urlopen(req, timeout=60) as r:
         b = r.read()
-    time.sleep(0.25)
-    return b if binary else b.decode("utf-8", "replace")
+    time.sleep(0.2)
+    return b.decode("utf-8", "replace")
 
 
 def rfile_text(html_text):
     t = re.sub(r"<[^>]+>", "\n", html_text)
     t = html.unescape(t)
-    out = []
-    for line in t.split("\n"):
-        s = line.strip().replace(" ", " ")
-        if s:
-            out.append(s)
-    return out
+    return [x.strip().replace("\xa0", " ") for x in t.split("\n") if x.strip()]
 
 
 def to_num(s):
     s = s.replace("$", "").replace(",", "").strip()
+    if s.endswith("%"):
+        return None
     neg = s.startswith("(") and s.endswith(")")
     s = s.strip("()")
     try:
@@ -66,55 +94,39 @@ def to_num(s):
     return -v if neg else v
 
 
-NON_SEG_CONTEXTS = {
-    "Operating Segment", "Intersegment", "Net Sales", "Finance and Interest Income",
-    "Other Income", "Financial Services (FS)", "Financial services",
-    "Segment Reconciling Items", "Corporate, Non-Segment", "Reconciling Items",
-    "Corporate and Other", "Equipment Operations", "Operating Segments",
-    "Material Reconciling Items",
-}
-
-
 def parse_r_segment(lines):
-    """Yield (segment_label, metric, [values in column order])."""
+    """Return [(segment, metric, context, [column values])] for segment-dimensioned rows."""
     cur_seg = None
     cur_ctx = None
-    i = 0
     res = []
+    i = 0
     while i < len(lines):
         s = lines[i]
-        base = s.split(" | ")[0].strip()
-        if base in SEGS:
-            cur_seg = SEGS[base]
-            cur_ctx = s
+        seg, dims = ctx_segment(s)
+        if seg is not None:
+            cur_seg, cur_ctx = seg, (seg, dims)
             i += 1
             continue
-        if cur_seg and s in ("Net Sales and Revenues", "Net Sales and Revenues:"):
+        if cur_seg and s in SUBHEADERS:
             i += 1
             continue
-        if cur_seg and s in ("Segment operating profit", "Operating profit"):
-            vals = []
-            j = i + 1
+        metric = None
+        if cur_seg and s in OP_LABELS:
+            metric = "operating_profit"
+        elif cur_seg and s in NS_LABELS:
+            metric = "net_sales"
+        if metric:
+            vals, j = [], i + 1
             while j < len(lines) and to_num(lines[j]) is not None:
                 vals.append(to_num(lines[j]))
                 j += 1
-            res.append((cur_seg, "operating_profit", cur_ctx, vals))
+            if vals:
+                res.append((cur_seg, metric, cur_ctx, vals))
             i = j
             continue
-        if cur_seg and s in ("Net sales and revenues", "Net sales"):
-            vals = []
-            j = i + 1
-            while j < len(lines) and to_num(lines[j]) is not None:
-                vals.append(to_num(lines[j]))
-                j += 1
-            res.append((cur_seg, "net_sales", cur_ctx, vals))
-            i = j
-            continue
-        # A new dimension context that is NOT one of our segments ends the current block.
-        # Row labels (e.g. 'Intersegment income', 'Cost of sales') must NOT reset it, so
-        # only genuine context headers do: any line containing ' | ', or one of the known
-        # non-segment axis members.
-        if (" | " in s and base not in SEGS) or s in NON_SEG_CONTEXTS:
+        # anything else that is neither a numeric cell nor a recognised row label
+        # is a new (non-segment) dimension context and ends the block
+        if to_num(s) is None and not ROW_LABEL.match(s) and not PCT_CELL.match(s):
             cur_seg = None
         i += 1
     return res
@@ -203,17 +215,24 @@ def main():
                 chosen = rfile
                 break
         if chosen is None:
+            print(f"  no usable 3-month segment R-file: {form} {fdate}", file=sys.stderr)
             continue
+        print(f"  {form} {fdate} -> {chosen}", file=sys.stderr)
         # Pick, per (segment, metric), the single correct dimension context.
         #   post-ASU 2023-07: external net sales = '<Seg> | Net Sales | Operating Segment'
         #                     operating profit   = '<Seg> | Operating Segment'
         #   pre-ASU:          both live on the bare '<Seg>' context
+        # The BARE '<Segment>' context carries TOTAL segment revenues (external net
+        # sales + finance/interest + other + intersegment income), which is NOT the
+        # 'segment net sales' line of the earnings release -- accept net sales only
+        # from a context that also carries the 'Net Sales' axis member. Operating
+        # profit is unambiguous and is accepted from the plain segment context too.
         PREF = {"net_sales": [frozenset({"Net Sales", "Operating Segment"}),
-                              frozenset({"Net Sales"}), frozenset()],
+                              frozenset({"Net Sales"})],
                 "operating_profit": [frozenset({"Operating Segment"}), frozenset()]}
         best = {}
         for seg, metric, ctx, vals in rows:
-            dims = frozenset(p.strip() for p in ctx.split("|")[1:])
+            dims = ctx[1]
             pref = PREF[metric]
             if dims not in pref:
                 continue

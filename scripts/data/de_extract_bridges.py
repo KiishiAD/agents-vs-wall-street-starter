@@ -94,21 +94,21 @@ def token_stream(chunk):
     """Ordered stream of ('L', label) and ('V', value) tokens."""
     toks = []
     for m in QTR.finditer(chunk):
-        toks.append((m.start(), "L", f"EP:{m.group(1)}Q{m.group(2)}"))
+        toks.append((m.start(), "L", f"EP:{m.group(1)}Q{m.group(2)}", m.end()))
     for key, pat in COMPONENTS:
         for m in re.finditer(pat, chunk, re.I):
-            toks.append((m.start(), "L", key))
+            toks.append((m.start(), "L", key, m.end()))
     for m in MONEY_TOK.finditer(chunk):
         v = money(m.group(0))
         if v is not None:
-            toks.append((m.start(), "V", v))
+            toks.append((m.start(), "V", v, m.end()))
     toks.sort(key=lambda t: t[0])
     # de-duplicate overlapping label matches at the same position
     out, lastpos = [], -99
-    for p, k, v in toks:
+    for p, k, v, e in toks:
         if k == "L" and out and out[-1][1] == "L" and p - lastpos < 4:
             continue
-        out.append((p, k, v))
+        out.append((p, k, v, e))
         lastpos = p
     return out
 
@@ -131,17 +131,17 @@ def parse_json_style(chunk):
 def parse_ordered_prose(chunk):
     """Labels and values appear in the same order; zip them when counts agree."""
     st = token_stream(chunk)
-    labels = [v for _, k, v in st if k == "L"]
-    values = [v for _, k, v in st if k == "V"]
+    labels = [t[2] for t in st if t[1] == "L"]
+    values = [t[2] for t in st if t[1] == "V"]
     if len(labels) >= 6 and len(labels) == len(values):
         return list(zip(labels, values)), "prose_ordered"
     # fall back: pair each label with the nearest value that is not already used
     pairs, used = [], set()
-    for i, (p, k, v) in enumerate(st):
+    for i, (p, k, v, _e) in enumerate(st):
         if k != "L":
             continue
         best, bestd = None, 1e9
-        for j, (q, k2, v2) in enumerate(st):
+        for j, (q, k2, v2, _e2) in enumerate(st):
             if k2 != "V" or j in used:
                 continue
             d = abs(q - p)
@@ -156,13 +156,104 @@ def parse_ordered_prose(chunk):
 
 
 
+V2L = re.compile(r"\b(for|due to|attributed to|owing to|from)\b", re.I)
+L2V = re.compile(r"(:|=|\b(of|showing|shows|representing|represents|increase[ds]?|"
+                 r"decrease[ds]?|contributed|resulted in|impact|value|with)\b)", re.I)
+
+
+def tight_pairs(chunk, inner, vals, maxgap=45):
+    """
+    Bind each waterfall label to its own value using the CONNECTOR TEXT between
+    them rather than raw proximity.
+
+    Proximity alone fails because the OCR narratives use two conventions and
+    sometimes mix them inside one chart. 4Q24 PPA opens with
+        '($1,204) due to "Volume/Mix." ... - Price: $2 - Currency: ($60)'
+    -- value-then-label for the first bar, label-then-value for the rest -- so
+    nearest-neighbour matching shifts Price onto Currency's number. 1Q26 PPA is
+    the opposite: '"($61)" for "Volume/Mix", "($4)" for "Price"', where the
+    FOLLOWING value is always nearer than the label's own preceding one.
+
+    So for each label both gaps are scored: a short gap containing a
+    value->label connector ("for", "due to") binds backwards, a short gap
+    containing a label->value connector (":", "of", "showing") binds forwards,
+    and a bare punctuation gap falls back to distance. Returns [(label, value)]
+    only if the assignment is injective and exactly exhausts the component
+    values; otherwise None so the caller can reject the quarter.
+    """
+    labs, seen = [], set()
+    for pos, kind, val, end in inner:
+        if kind == "L" and val in COMP_KEYS and val not in seen:
+            seen.add(val)
+            labs.append((pos, end, val))
+    vps = [(pos, end, val) for pos, kind, val, end in inner if kind == "V"]
+    if not labs or len(labs) != len(vps):
+        return None
+
+    def score(gap, rx):
+        if len(gap) > maxgap:
+            return 0
+        if rx.search(gap):
+            return 3
+        if len(gap) <= 6:
+            return 2
+        return 1
+
+    used, out, defer = set(), {}, []
+    for lpos, lend, lab in labs:
+        prev = [j for j, (vp, ve, _) in enumerate(vps) if ve <= lpos and j not in used]
+        nxt = [j for j, (vp, ve, _) in enumerate(vps) if vp >= lend and j not in used]
+        pj = max(prev) if prev else None
+        nj = min(nxt) if nxt else None
+        sb = score(chunk[vps[pj][1]:lpos], V2L) if pj is not None else 0
+        sa = score(chunk[lend:vps[nj][0]], L2V) if nj is not None else 0
+        if sb == 0 and sa == 0:
+            defer.append((lpos, lab))
+            continue
+        if sb > sa:
+            pick = pj
+        elif sa > sb:
+            pick = nj
+        else:
+            db = lpos - vps[pj][1] if pj is not None else 10 ** 9
+            da = vps[nj][0] - lend if nj is not None else 10 ** 9
+            pick = pj if db <= da else nj
+        used.add(pick)
+        out[lab] = vps[pick][2]
+    for lpos, lab in defer:
+        left = [j for j in range(len(vps)) if j not in used]
+        if not left:
+            return None
+        j = min(left, key=lambda j: abs(vps[j][0] - lpos))
+        used.add(j)
+        out[lab] = vps[j][2]
+    if sorted(out.values()) != sorted(vals):
+        return None
+    return [(l, out[l]) for _, _, l in labs]
+
+
 def parse_anchored(chunk, pstart, pend):
     """
-    Endpoint-anchored parse. The 8-K panel tells us the two endpoint values
-    independently, so locate them in the token stream and take the component
-    values as the ones strictly BETWEEN them, zipped in order against the
-    component labels that appear in the same span. Then verify the arithmetic.
-    Returns (pairs, style) or (None, None).
+    Endpoint-anchored parse.
+
+    The 8-K panel gives both endpoint values independently, so locate them in
+    the token stream and take the component values as the ones strictly BETWEEN
+    them, in reading order.
+
+    CRITICAL: arithmetic reconciliation alone does NOT pin the label->value
+    mapping -- any permutation of the components sums to the same total. Several
+    OCR narratives drop the first component label and describe the bar only as
+    "a gray bar with a value of ($627) positioned between the 2Q 2023 bar and
+    the Volume/Mix bar", which shifts every subsequent label by one and would
+    silently reconcile with Volume/Mix = +137 and Other = -627. Deere's
+    waterfall always runs in the fixed order
+
+        start | Volume/Mix | Price | Currency | Warranty | Production Costs
+              | SA&G/R&D | Special Items | Other | end
+
+    so when the full set of 8 component bars is present the values are assigned
+    BY CANONICAL POSITION, not by the OCR's label adjacency. Assignments are
+    additionally sign-checked against the 8-K MD&A narrative downstream.
     """
     if pstart is None or pend is None:
         return None, None
@@ -181,14 +272,46 @@ def parse_anchored(chunk, pstart, pend):
     for t in inner:
         if t[1] == "L" and not str(t[2]).startswith("EP:") and t[2] not in labs:
             labs.append(t[2])
-    if not vals or len(vals) != len(labs):
+    if not labs:   # JSON-array style puts every label ahead of every value
+        for t in st:
+            if t[1] == "L" and not str(t[2]).startswith("EP:") and t[2] not in labs:
+                labs.append(t[2])
+    if not vals:
         return None, None
     if sum(vals) != pend - pstart:
+        # Orphan-lead case: some narratives describe the first component bar
+        # out of position -- "A gray bar with a value of ($627) is positioned
+        # between the 2Q 2023 bar and the Volume/Mix bar" -- which leaves the
+        # in-span values one short and every label attached one bar late. If a
+        # single money token elsewhere in the chunk closes the bridge exactly,
+        # it IS the first (Volume/Mix) bar and the canonical order applies.
+        delta = pend - pstart - sum(vals)
+        outside = [t[2] for k, t in enumerate(st)
+                   if t[1] == "V" and not (si < k < ei) and t[2] == delta]
+        if len(outside) == 1 and len(vals) == len(COMP_KEYS) - 1:
+            idx0 = [COMP_KEYS.index(l) for l in labs if l in COMP_KEYS]
+            if idx0 == sorted(idx0):
+                return list(zip(COMP_KEYS, [delta] + vals)), "anchored_orphan_lead"
         return None, None
-    pairs = list(zip(labs, vals))
-    pairs.append((f"EP:{'X'}", None))  # placeholder removed by caller
-    return pairs[:-1], "anchored_8k"
-
+    # The OCR sometimes emits the label row out of order -- e.g. the 2Q22 deck
+    # renders labels as [2Q 2021, Price, Volume/Mix, Currency, ...]. When the
+    # label sequence is not Deere's fixed waterfall order the mapping cannot be
+    # recovered from the arithmetic (every permutation sums the same), so the
+    # quarter is REJECTED rather than assigned on a coin flip.
+    # Case 1: every label sits immediately beside its own value in the prose
+    # ("($61)" for "Volume/Mix"). Then the pairing is explicit and the order in
+    # which the narrator walks the bars does not matter.
+    tight = tight_pairs(chunk, inner, vals)
+    if tight is not None and len(tight) == len(vals):
+        return tight, "anchored_tightpairs"
+    idx = [COMP_KEYS.index(l) for l in labs if l in COMP_KEYS]
+    if idx != sorted(idx):
+        return None, "scrambled_labels"
+    if len(vals) == len(COMP_KEYS):
+        return list(zip(COMP_KEYS, vals)), "anchored_canonical8"
+    if len(vals) == len(labs):
+        return list(zip(labs, vals)), "anchored_labelmatched"
+    return None, None
 
 def build_record(pairs, style):
     comps, eps = {}, []
@@ -290,6 +413,10 @@ def main():
                     return PANEL.get((int(mm.group(2)), int(mm.group(1)), seg + "_op"))
                 pstart, pend = _pv(qlabs[0]), _pv(qlabs[-1])
             pairs, style = parse_anchored(chunk, pstart, pend)
+            if style == "scrambled_labels":
+                rec["status"] = "rejected_scrambled_label_order"
+                raw_rows.append(rec)
+                continue
             if pairs and len(qlabs) >= 2:
                 pairs = ([(f"EP:{qlabs[0]}", pstart)] + list(pairs)
                          + [(f"EP:{qlabs[-1]}", pend)])
@@ -354,8 +481,11 @@ def main():
 
     # de-duplicate: same (segment, start_label, end_label); prefer reconciled
     best = {}
+    scrambled = []
     for r in raw_rows:
-        if r.get("status") == "unparsed":
+        if r.get("status") in ("unparsed",) or "start_label" not in r:
+            if r.get("status") == "rejected_scrambled_label_order":
+                scrambled.append(r)
             continue
         k = (r["segment"], r["start_label"], r["end_label"])
         rank = 0 if r["status"] == "reconciled" else (1 if r["status"].startswith("reconciled") else 2)
@@ -368,11 +498,15 @@ def main():
     rec_bad = [r for r in kept if not r["status"].startswith("reconciled")]
     unparsed = [r for r in raw_rows if r.get("status") == "unparsed"]
 
-    out = {"reconciled": rec_ok, "rejected": rec_bad, "unparsed_count": len(unparsed),
-           "n_reconciled": len(rec_ok), "n_rejected": len(rec_bad)}
+    out = {"reconciled": rec_ok, "rejected": rec_bad,
+           "scrambled_label_order": scrambled,
+           "unparsed_count": len(unparsed),
+           "n_reconciled": len(rec_ok), "n_rejected": len(rec_bad),
+           "n_scrambled": len(scrambled)}
     if a.out:
         open(a.out, "w").write(json.dumps(out, indent=1))
-    print(f"reconciled={len(rec_ok)} rejected={len(rec_bad)} unparsed_chunks={len(unparsed)}",
+    print(f"reconciled={len(rec_ok)} rejected={len(rec_bad)} "
+          f"scrambled={len(scrambled)} unparsed_chunks={len(unparsed)}",
           file=sys.stderr)
     for r in rec_ok:
         print(f"OK  {r['end_label']:>7} {str(r['segment']):>4} {r['start']:>6}->{r['end']:>6} "

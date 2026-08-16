@@ -293,6 +293,43 @@ def main():
         print("  FY2021+ quarterly op share     n=%d mean=%.4f sd=%.4f min=%.4f max=%.4f"
               % (len(so), statistics.mean(so), statistics.stdev(so), min(so), max(so)))
 
+    # ---------------- out-of-sample back-cast test ----------------
+    # Apply the ratio measured on the FY2019/FY2020 overlap window to FY2021+ periods,
+    # where the true PPA split is observed. This is the honest test of whether a
+    # back-cast of PPA off the long A&T history would have worked.
+    print("\n" + "=" * 78)
+    print("OUT-OF-SAMPLE BACK-CAST TEST: FY2019/FY2020 ratio applied to FY2021+ actuals")
+    if q and a:
+        rs = statistics.mean(b["share_sales"] for b in q)
+        ro = statistics.mean(b["share_op"] for b in q)
+        rs_a = statistics.mean(b["share_sales"] for b in a)
+        ro_a = statistics.mean(b["share_op"] for b in a)
+        for freq, ratio_s, ratio_o, want_fy in (("quarterly", rs, ro, False),
+                                                ("annual", rs_a, ro_a, True)):
+            es, eo = [], []
+            for (fy, fq) in sorted({(k[2], k[3]) for k in prim if k[4] == "modern-PPA"},
+                                   key=lambda x: (x[0], QORDER[x[1]])):
+                if fy < 2021 or ((fq == "FY") != want_fy):
+                    continue
+                ps = prim.get(("PPA", "sales", fy, fq, "modern-PPA"))
+                ss = prim.get(("SAT", "sales", fy, fq, "modern-PPA"))
+                po = prim.get(("PPA", "op", fy, fq, "modern-PPA"))
+                so = prim.get(("SAT", "op", fy, fq, "modern-PPA"))
+                if not (ps and ss and po and so) or po["value"] == 0:
+                    continue
+                es.append((ratio_s * (ps["value"] + ss["value"]) - ps["value"]) / ps["value"])
+                eo.append((ratio_o * (po["value"] + so["value"]) - po["value"]) / po["value"])
+            if not es:
+                continue
+            print("  %-9s net sales   ratio=%.4f n=%2d mean err %+.1f%%  MAPE %.1f%%  worst %.1f%%"
+                  % (freq, ratio_s, len(es), 100 * statistics.mean(es),
+                     100 * statistics.mean(abs(e) for e in es),
+                     100 * max(abs(e) for e in es)))
+            print("  %-9s op profit   ratio=%.4f n=%2d mean err %+.1f%%  MAPE %.1f%%  worst %.1f%%"
+                  % (freq, ratio_o, len(eo), 100 * statistics.mean(eo),
+                     100 * statistics.mean(abs(e) for e in eo),
+                     100 * max(abs(e) for e in eo)))
+
     # ---------------- XBRL cross-check ----------------
     print("\n" + "=" * 78)
     print("INDEPENDENT CROSS-CHECK: corpus press-release 'Total net sales and revenues'")

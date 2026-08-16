@@ -668,7 +668,9 @@ def main():
             print("    MISMATCH:", x)
 
     # [5] quarters must sum to the fiscal year
-    print("\n[5] four-quarter sum vs reported annual:")
+    print("\n[5] four-quarter sum vs reported annual "
+          "(ROUND = 1 USDm apart, i.e. rounding of independently rounded quarters):")
+    nb = []
     qmap = defaultdict(dict)
     for (sid, pe, q) in combined:
         if q == "FY":
@@ -682,13 +684,41 @@ def main():
         if len(qs) == 4:
             s = sum(qs.values())
             a = combined[(sid, pe, q)]["value"]
-            mark = "OK " if abs(s - a) < 0.5 else "DIFF"
+            d = abs(s - a)
+            mark = "OK  " if d < 0.5 else ("ROUND" if d <= 1.5 else "DIFF")
+            nb.append((mark, sid, fy, s, a))
             print(f"    {mark} {sid} FY{fy}: sum(Q1..Q4)={s:.0f} reported={a:.0f}")
+
+    print(f"    -> exact={sum(1 for x in nb if x[0]=='OK  ')}, "
+          f"off-by-one(rounding)={sum(1 for x in nb if x[0]=='ROUND')}, "
+          f"real differences={sum(1 for x in nb if x[0]=='DIFF')}")
+
+    # [6] basis-bridge: legacy-AT FY2019 (as reported in the FY2019 Q4 8-K) must equal
+    # restated PPA + SAT, and legacy CF must equal restated CF, if the FY2021 split was a
+    # clean partition of Agriculture & Turf with no reallocation.
+    LEGACY_FY2019 = {  # from filings/2019-11-27__de-us-20191127-q4-8k__469218.md
+        ("at", "net_sales"): 23666.0, ("at", "operating_profit"): 2506.0,
+        ("cf", "net_sales"): 11220.0, ("cf", "operating_profit"): 1215.0,
+    }
+    print("\n[6] legacy-AT -> modern-PPA basis bridge at FY2019 (annual):")
+    pe19 = FY_END[2019]
+    for metric in ("net_sales", "operating_profit"):
+        ppa = annual.get((f"de_ppa_{metric}", pe19), {}).get("value")
+        sat = annual.get((f"de_sat_{metric}", pe19), {}).get("value")
+        cf = annual.get((f"de_cf_{metric}", pe19), {}).get("value")
+        if None in (ppa, sat, cf):
+            continue
+        la = LEGACY_FY2019[("at", metric)]
+        lc = LEGACY_FY2019[("cf", metric)]
+        print(f"    {metric}: legacy A&T {la:.0f} vs restated PPA+SAT {ppa + sat:.0f} "
+              f"-> {'OK' if abs(la - ppa - sat) < 0.5 else 'DIFF'};  "
+              f"legacy CF {lc:.0f} vs restated CF {cf:.0f} "
+              f"-> {'OK' if abs(lc - cf) < 0.5 else 'DIFF'}")
 
     per_series = defaultdict(list)
     for r in recs:
         per_series[r["series_id"]].append((r["period_end"], r["fiscal_quarter"]))
-    print("\n[6] series coverage:")
+    print("\n[7] series coverage:")
     for s in sorted(per_series):
         pe = sorted(per_series[s])
         nq = sum(1 for x in pe if x[1] != "FY")

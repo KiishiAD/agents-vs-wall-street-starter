@@ -133,7 +133,7 @@ def main():
                 if pat.match(label):
                     seg = k
                     break
-            if seg is None or seg in found:
+            if seg is None:
                 continue
             if not any(re.search(r"quarter|month", x, re.I) for x in c[1:]):
                 continue
@@ -141,12 +141,46 @@ def main():
                 c2 = cells(lines[j]) if lines[j].strip().startswith("|") else None
                 if not c2:
                     break
-                if re.match(r"^operating profit\s*$", c2[0].replace("*", "").strip(), re.I):
+                lab2 = c2[0].replace("*", "").strip()
+                if re.match(r"^net sales\s*$", lab2, re.I):
                     nums = [parse_num(x) for x in c2[1:]]
                     nums = [n for n in nums if n is not None]
                     if len(nums) >= 2:
-                        found[seg] = {"cur": nums[0], "pri": nums[1]}
+                        found.setdefault(seg, {})
+                        found[seg]["sales_cur"] = nums[0]
+                        found[seg]["sales_pri"] = nums[1]
+                if re.match(r"^operating profit\s*$", lab2, re.I):
+                    nums = [parse_num(x) for x in c2[1:]]
+                    nums = [n for n in nums if n is not None]
+                    if len(nums) >= 2:
+                        found.setdefault(seg, {})
+                        found[seg]["cur"] = nums[0]
+                        found[seg]["pri"] = nums[1]
                     break
+
+        # Consolidated "<Segment> net sales" rows fill any remaining sales gaps.
+        for ln in lines:
+            if not ln.strip().startswith("|"):
+                continue
+            c = cells(ln)
+            if not c:
+                continue
+            label = c[0].replace("&amp;", "&").replace("*", "").strip()
+            m2 = re.match(r"^(.*?)\s+net sales$", label, re.I)
+            if not m2:
+                continue
+            seg = None
+            for pat, k in SEG_PATTERNS:
+                if pat.match(m2.group(1)):
+                    seg = k
+                    break
+            if seg is None or seg not in found or "sales_cur" in found[seg]:
+                continue
+            nums = [parse_num(x) for x in c[1:]]
+            nums = [n for n in nums if n is not None]
+            if len(nums) >= 2:
+                found[seg]["sales_cur"] = nums[0]
+                found[seg]["sales_pri"] = nums[1]
 
         if not found:
             continue

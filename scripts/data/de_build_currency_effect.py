@@ -200,10 +200,13 @@ def region_rows(mx):
     """Normalise the parsed geo dict onto the six canonical region names."""
     out = {}
     for label, vals in mx["geo"].items():
-        lab = label
+        lab = label.lower()
         for canon, _ in REGION_KEY:
-            if canon.lower() in lab.lower() or (
-                    canon.startswith("Asia") and "Oceania" in lab):
+            # Deere renamed the sixth market from "Asia, Africa, Australia,
+            # New Zealand, and Middle East" to "Asia, Africa, Oceania, and
+            # Middle East" during fiscal 2023; both spellings are the same row.
+            if canon.lower() in lab or (
+                    canon.startswith("Asia") and lab.startswith("asia")):
                 out[canon] = vals
                 break
     return out
@@ -238,17 +241,23 @@ BASKET_RATIONALE = {
 }
 
 
-def fx_move(ccy, q):
+def fx_move(ccy, fq):
+    """fq is a window key such as 'FY2026Q3'."""
     if ccy == "USD":
         return 0.0
     rec = FX.get(ccy)
     if rec is None:
         return None
-    return rec["yoy_pct"][q]
+    return rec["yoy_pct"].get(fq)
 
 
-def naive_effect(mx, seg, q):
-    """Weighted yoy FX move, in percentage points of prior-year revenue."""
+def naive_effect(mx, seg, fq):
+    """Weighted yoy FX move, in percentage points of prior-year revenue.
+
+    effect = sum_over_regions ( prior-year revenue share x regional FX move )
+    which is the first-order translation identity: revenue earned in a foreign
+    currency is restated into dollars at a rate that moved by that much.
+    """
     rr = region_rows(mx)
     idx = SEG_IDX[seg]
     base = {}
@@ -266,7 +275,7 @@ def naive_effect(mx, seg, q):
         w = amt / float(total)
         sub = 0.0
         for ccy, share in BASKET[canon].items():
-            mv = fx_move(ccy, q)
+            mv = fx_move(ccy, fq)
             if mv is None:
                 return None, None
             sub += share * mv
@@ -276,41 +285,93 @@ def naive_effect(mx, seg, q):
     return eff, detail
 
 
-# quarters we can calibrate on (Deere has already disclosed the answer)
-CAL = [("2026", "q1", "Q1", "2025-01-26"), ("2026", "q2", "Q2", "2025-04-27")]
-TARGET = ("2026", "q3", "Q3", "2025-07-27")
+# Every quarter for which BOTH a disclosed pp figure and a prior-year
+# three-month geographic matrix exist.  base_end is the prior-year quarter end.
+def prior_q_end(fy, q):
+    return QEND.get((str(int(fy) - 1), q))
+
 
 disclosed = {}
+blank = set()
 for r in rows:
     d = dict(zip(HEADER, r))
-    if d["series_id"].startswith("de_currency_effect_pct_") and d["value"] != "":
-        disclosed[(d["fiscal_year"], d["fiscal_quarter"], d["series_id"].rsplit("_", 1)[-1])] = float(d["value"])
+    if not d["series_id"].startswith("de_currency_effect_pct_"):
+        continue
+    seg = d["series_id"].rsplit("de_currency_effect_pct_", 1)[-1]
+    if d["value"] == "":
+        blank.add((d["fiscal_year"], d["fiscal_quarter"], seg))
+    else:
+        disclosed[(d["fiscal_year"], d["fiscal_quarter"], seg)] = float(d["value"])
 
-report = {"calibration": [], "target": {}, "weights": {}, "fx": {}}
+report = {"calibration": [], "target": {}, "fx": {}}
 
-for seg in ("PPA", "SAT", "CF", "TOTAL"):
-    key = {"PPA": "ppa", "SAT": "sat", "CF": "cf", "TOTAL": "total"}[seg]
-    for fy, q, qq, base_end in CAL:
+for fy in ("2022", "2023", "2024", "2025", "2026"):
+    for q in ("q1", "q2", "q3"):
+        base_end = prior_q_end(fy, q)
         mx = matrix_for(base_end)
         if mx is None:
             continue
-        eff, detail = naive_effect(mx, seg, qq)
-        obs = disclosed.get((fy, q, key))
-        report["calibration"].append(
-            {"segment": seg, "fy": fy, "quarter": q, "base_matrix": base_end,
-             "naive_pp": eff, "disclosed_pp": obs,
-             "ratio": (obs / eff) if (obs is not None and eff) else None})
+        fq = "FY%sQ%s" % (fy, q[-1])
+        for seg in ("PPA", "SAT", "CF"):
+            eff, _ = naive_effect(mx, seg, fq)
+            if eff is None:
+                continue
+            key = (fy, q, seg.lower())
+            obs = disclosed.get(key)
+            is_blank = key in blank
+            report["calibration"].append(
+                {"segment": seg, "fy": fy, "quarter": q, "base_matrix": base_end,
+                 "naive_pp": eff, "disclosed_pp": obs,
+                 "disclosed_blank": is_blank})
 
-# calibration factor per segment: ratio of disclosed to naive, averaged over
-# the two disclosed FY2026 quarters
-kfac = {}
+
+def fit_k(points):
+    """Least-squares slope through the origin: disclosed = k x naive."""
+    num = sum(p["naive_pp"] * p["obs"] for p in points)
+    den = sum(p["naive_pp"] ** 2 for p in points)
+    if den == 0:
+        return None, None, 0
+    k = num / den
+    resid = [p["obs"] - k * p["naive_pp"] for p in points]
+    rmse = (sum(r * r for r in resid) / len(resid)) ** 0.5
+    return k, rmse, len(points)
+
+
+# Two readings of the blank cells, reported side by side rather than one being
+# quietly chosen: strict (drop them) and inclusive (a printed-but-blank cell is
+# Deere stating the effect rounds to zero).
+pts_strict, pts_incl = [], []
+for c in report["calibration"]:
+    if c["disclosed_pp"] is not None:
+        p = {"naive_pp": c["naive_pp"], "obs": c["disclosed_pp"], **c}
+        pts_strict.append(p)
+        pts_incl.append(p)
+    elif c["disclosed_blank"]:
+        pts_incl.append({"naive_pp": c["naive_pp"], "obs": 0.0, **c})
+
+k_strict, rmse_strict, n_strict = fit_k(pts_strict)
+k_incl, rmse_incl, n_incl = fit_k(pts_incl)
+report["fit"] = {
+    "strict_drop_blanks": {"k": k_strict, "rmse_pp": rmse_strict, "n": n_strict},
+    "inclusive_blank_as_zero": {"k": k_incl, "rmse_pp": rmse_incl, "n": n_incl},
+}
+per_seg = {}
 for seg in ("PPA", "SAT", "CF"):
-    rs = [c["ratio"] for c in report["calibration"]
-          if c["segment"] == seg and c["ratio"] is not None]
-    kfac[seg] = sum(rs) / len(rs) if rs else None
-rs_all = [c["ratio"] for c in report["calibration"] if c["ratio"] is not None]
-kfac["TOTAL"] = sum(rs_all) / len(rs_all) if rs_all else None
+    ps = [p for p in pts_incl if p["segment"] == seg]
+    if ps:
+        kk, rr_, nn = fit_k(ps)
+        per_seg[seg] = {"k": kk, "rmse_pp": rr_, "n": nn}
+report["fit"]["per_segment_inclusive"] = per_seg
+
+# Headline calibration: the pooled inclusive fit.  A single pooled k is used in
+# preference to per-segment factors because Deere rounds the disclosure to whole
+# percentage points, so a per-segment factor fitted on values of 1-4pp is mostly
+# fitting rounding noise.
+K = k_incl
+KRMSE = rmse_incl
+kfac = {"PPA": K, "SAT": K, "CF": K, "TOTAL": K}
 report["calibration_factor"] = kfac
+report["k_used"] = K
 
 # prior-year Q3 FY2025 net sales, 8-K segment basis (verified from the corpus)
 LY_Q3_SALES = {"PPA": 4273.0, "SAT": 3025.0, "CF": 3059.0}
@@ -318,11 +379,11 @@ LY_Q3_TOTAL_NSR = 12018.0   # rev-rec footnote total, three months ended 2025-07
 
 mx_q3 = matrix_for("2025-07-27")
 for seg in ("PPA", "SAT", "CF", "TOTAL"):
-    eff, detail = naive_effect(mx_q3, seg, "Q3")
+    eff, detail = naive_effect(mx_q3, seg, "FY2026Q3")
     k = kfac.get(seg if seg != "TOTAL" else "TOTAL")
     cal = eff * k if (eff is not None and k) else None
     report["target"][seg] = {"naive_pp": eff, "calibrated_pp": cal,
-                             "k": k, "detail": detail}
+                             "k": k, "rmse_pp": KRMSE, "detail": detail}
 
     if seg == "TOTAL":
         base_sales = LY_Q3_TOTAL_NSR
@@ -352,7 +413,23 @@ for seg in ("PPA", "SAT", "CF", "TOTAL"):
              units="USDm", basis="segment-net-sales" if seg != "TOTAL" else "rev-rec",
              source="derived: estimated pp x prior-year Q3 FY2025 net sales %.0f"
                     % base_sales,
-             notes="%s; ESTIMATE for an unreported quarter" % INF)
+             notes="%s; ESTIMATE for an unreported quarter; 1-sigma band "
+                   "+/-%.0f USDm from the %.2fpp calibration RMSE"
+                   % (INF, KRMSE / 100.0 * base_sales, KRMSE))
+        emit(series_id=sid_pct + "_lo", period_end="2026-08-02",
+             fiscal_year="2026", fiscal_quarter="q3", segment=seg_field,
+             geography=geo_field, value="%.2f" % (cal - KRMSE),
+             units="pct_points_of_yoy_net_sales_change",
+             basis="segment-net-sales" if seg != "TOTAL" else "rev-rec",
+             source="point estimate minus 1 calibration RMSE",
+             notes="%s; low end of the 1-sigma band" % INF)
+        emit(series_id=sid_pct + "_hi", period_end="2026-08-02",
+             fiscal_year="2026", fiscal_quarter="q3", segment=seg_field,
+             geography=geo_field, value="%.2f" % (cal + KRMSE),
+             units="pct_points_of_yoy_net_sales_change",
+             basis="segment-net-sales" if seg != "TOTAL" else "rev-rec",
+             source="point estimate plus 1 calibration RMSE",
+             notes="%s; high end of the 1-sigma band" % INF)
 
     if seg != "TOTAL" and detail:
         for canon, dd in detail.items():
@@ -400,43 +477,93 @@ for ccy, rec in FX.items():
 report["fx"] = {c: r["yoy_pct"] for c, r in FX.items()}
 
 # ------------------------------- 2b: USDm conversion of the disclosed history
-# prior-year segment net sales, 8-K basis, read from the MD&A tables
-PRIOR_SALES = {}
+# Prior-year quarter net sales come straight from the same MD&A table that
+# carries the percentage, so the two always refer to the same base.
+prior_sales = {}
 for e in BRIDGE["mdna"]:
-    pass  # prior-year sales are re-derived below from the known series
-
-LY_SALES = {  # (fy, q, seg) -> prior-year-quarter segment net sales, USDm
-    ("2026", "q1", "PPA"): 3067, ("2026", "q1", "SAT"): 1748, ("2026", "q1", "CF"): 1994,
-    ("2026", "q2", "PPA"): 5230, ("2026", "q2", "SAT"): 2994, ("2026", "q2", "CF"): 2947,
-    ("2025", "q1", "PPA"): 4849, ("2025", "q1", "SAT"): 2425, ("2025", "q1", "CF"): 3212,
-    ("2025", "q2", "PPA"): 6581, ("2025", "q2", "SAT"): 3185, ("2025", "q2", "CF"): 3844,
-    ("2025", "q3", "PPA"): 5099, ("2025", "q3", "SAT"): 3053, ("2025", "q3", "CF"): 3235,
-    ("2024", "q1", "PPA"): 5198, ("2024", "q1", "SAT"): 3001, ("2024", "q1", "CF"): 3203,
-    ("2024", "q2", "PPA"): 7822, ("2024", "q2", "SAT"): 4145, ("2024", "q2", "CF"): 4112,
-    ("2024", "q3", "PPA"): 6806, ("2024", "q3", "SAT"): 3739, ("2024", "q3", "CF"): 3739,
-}
-for (fy, q, seg), ly in sorted(LY_SALES.items()):
-    pp = disclosed.get((fy, q, seg.lower()))
-    if pp is None:
+    scope = e["scope"]
+    if scope not in ("PPA", "SAT", "CF") or not e.get("net_sales_blocks"):
         continue
-    pend = QEND.get((fy, q))
-    emit(series_id="de_currency_effect_usdm_" + seg.lower(),
-         period_end=pend, fiscal_year=fy, fiscal_quarter=q, segment=seg,
-         geography="", value="%.0f" % (pp / 100.0 * ly), units="USDm",
+    if not e["periods"] or e["periods"][0] != "three":
+        continue
+    blk = e["net_sales_blocks"][0]
+    if len(blk) < 2:
+        continue
+    fy, q = fy_q_from_pub(e["published"], e["qtag"])
+    prior_sales[(fy, q, scope.lower())] = blk[1]
+
+for (fy, q, seg), pp in sorted(disclosed.items()):
+    if seg not in ("ppa", "sat", "cf"):
+        continue
+    ly = prior_sales.get((fy, q, seg))
+    if ly is None:
+        continue
+    emit(series_id="de_currency_effect_usdm_" + seg,
+         period_end=QEND.get((fy, q), ""), fiscal_year=fy, fiscal_quarter=q,
+         segment=seg.upper(), geography="",
+         value="%.0f" % (pp / 100.0 * ly), units="USDm",
          basis="segment-net-sales",
-         source="derived: disclosed %+g pp x prior-year quarter net sales %d" % (pp, ly),
+         source="derived: disclosed %+g pp x prior-year quarter net sales %.0f"
+                % (pp, ly),
          notes="%s; Deere discloses the effect only in whole percentage points, "
                "so this carries +/-0.5pp of rounding (about +/-%.0f USDm)"
                % (INF, 0.005 * ly))
 
 # --------------------------------------- slide operating-profit currency bars
+# Deere reports Q1 in February, Q2 in May, Q3 in August and Q4 in November of
+# the same fiscal year, so the deck's publication month fixes the quarter.
+MONTH_Q = {2: "q1", 5: "q2", 8: "q3", 11: "q4"}
 for s in BRIDGE["slides"]:
+    pub = s["file"][:10]
+    q = MONTH_Q.get(int(pub[5:7]))
+    if q is None:
+        continue
+    fy = pub[:4]
     emit(series_id="de_currency_effect_opprofit_usdm_" + s["segment"].lower(),
-         period_end="", fiscal_year="", fiscal_quarter="", segment=s["segment"],
-         geography="", value="%g" % s["value"], units="USDm",
-         basis="operating-profit-bridge",
+         period_end=QEND.get((fy, q), ""), fiscal_year=fy, fiscal_quarter=q,
+         segment=s["segment"], geography="", value="%g" % s["value"],
+         units="USDm", basis="operating-profit-bridge",
          source="%s:%d" % (s["file"], s["line"]),
-         notes="slide waterfall: effect on OPERATING PROFIT, not on net sales")
+         notes="earnings-deck waterfall; effect on OPERATING PROFIT, NOT on "
+               "net sales; accepted only because the full bridge reconciles "
+               "(%s convention)" % s["convention"])
+
+# ------------------------- Deere's own FY2026 currency-translation guidance
+# From the 2026-05-21 8-K "Deere Segment Outlook for Fiscal 2026" table.
+GUIDE = {"PPA": 3.0, "SAT": 1.0, "CF": 2.0}
+for seg, g in GUIDE.items():
+    emit(series_id="de_currency_effect_guidance_pct_" + seg.lower(),
+         period_end="2026-11-01", fiscal_year="2026", fiscal_quarter="fy",
+         segment=seg, geography="", value="%+.1f" % g,
+         units="pct_of_fy_net_sales", basis="segment-net-sales",
+         source="filings/2026-05-21__de-us-20260521-q2-8k__1042167.md:186-188",
+         notes="Deere's own FY2026 currency-translation guidance, set "
+               "2026-05-21 on then-current spot rates")
+
+# ------------------------------- Q4 FY2026 sensitivity: spot rates frozen
+# Computed by scripts/data/de_fx_q4_freeze.py using the 2026-08-03..07 average
+# held flat through 2026-11-01.
+Q4_FREEZE = {"PPA": 0.81, "SAT": -0.21, "CF": 0.06, "TOTAL": 0.25}
+FY_IMPLIED = {"PPA": 2.28, "SAT": 0.94, "CF": 1.63}
+for seg, v in Q4_FREEZE.items():
+    emit(series_id="de_currency_effect_pct_" + seg.lower(),
+         period_end="2026-11-01", fiscal_year="2026", fiscal_quarter="q4",
+         segment="" if seg == "TOTAL" else seg,
+         geography="Worldwide" if seg == "TOTAL" else "",
+         value="%+.2f" % v, units="pct_points_of_yoy_net_sales_change",
+         basis="segment-net-sales" if seg != "TOTAL" else "rev-rec",
+         source="de_fx_q4_freeze.py: FRED spot 2026-08-03..07 held flat to "
+                "2026-11-01 vs the 2025-07-28..2025-11-02 average",
+         notes="%s; SCENARIO, not a forecast: assumes rates stop moving" % INF)
+for seg, v in FY_IMPLIED.items():
+    emit(series_id="de_currency_effect_implied_fy_pct_" + seg.lower(),
+         period_end="2026-11-01", fiscal_year="2026", fiscal_quarter="fy",
+         segment=seg, geography="", value="%+.2f" % v,
+         units="pct_of_fy_net_sales", basis="segment-net-sales",
+         source="Q1 and Q2 as disclosed + Q3 estimate + Q4 spot-freeze scenario",
+         notes="%s; compare with Deere's %+.1f%% FY2026 guidance -- the gap is "
+               "the revenue risk the currency line carries into H2"
+               % (INF, GUIDE[seg]))
 
 
 def sort_key(r):

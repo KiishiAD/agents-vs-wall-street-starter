@@ -306,6 +306,33 @@ def main():
         tn = f"as disclosed, {dur} months ended {pe}; taxonomy=" + TAX_LABEL[tax]
         dump(store[key], list(tax), pe, fy, fq, tn, sorted(provenance[key]))
 
+    # ---- contract-liability / RPO series (precision-ag subscription proxy) ---
+    import extract_de_deferred_revenue as DR
+    import io, contextlib
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        DR.main()
+    dd = json.load(open("/private/tmp/claude-501/-Users-cor/c1ddf24f-b1cc-482f-9e47-45cae42bbce1/scratchpad/de_deferred.json"))
+    QMAP = {}
+    for k in list(quarters):
+        pe = quarters[k][0] or Q1END.get(k[1], "")
+        if pe:
+            QMAP[pe] = (k[1], k[2])
+    MQ = {1: "Q1", 2: "Q1", 4: "Q2", 5: "Q2", 7: "Q3", 8: "Q3", 10: "Q4", 11: "Q4"}
+    def bs_q(d):
+        return QMAP.get(d, (fy_of(d), MQ.get(int(d[5:7]), "")))
+    for d, (v, src) in sorted(dd["deferred"].items()):
+        fy, fq = bs_q(d)
+        emit("de_revrec_deferred_revenue", d, fy, fq, "", "", v, "rev-rec", src,
+             "contract liability: invoiced-but-unrecognised extended warranty, advance "
+             "equipment payments and precision-guidance / telematics / information-enabled "
+             "solutions subscription revenue; balance at period end")
+    for d, (v, src) in sorted(dd["upo"].items()):
+        fy, fq = bs_q(d)
+        emit("de_revrec_rpo_gt1yr", d, fy, fq, "", "", v, "rev-rec", src,
+             "remaining (unsatisfied) performance obligations on contracts with an original "
+             "duration greater than one year; balance at period end")
+
     hdr = ["series_id", "period_end", "fiscal_year", "fiscal_quarter", "segment", "geography",
            "product_line", "value", "units", "basis", "source", "notes"]
     with open(OUT_CSV, "w", newline="") as fh:

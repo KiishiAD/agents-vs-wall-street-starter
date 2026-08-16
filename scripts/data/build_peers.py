@@ -251,6 +251,10 @@ def main():
                     notes.append(exnote)
                 if rec["note"]:
                     notes.append(rec["note"])
+                if rec["val"] == 0:
+                    notes.append("ZERO IS REAL, NOT MISSING: the issuer tagged exactly 0 "
+                                 "for this period (a rounded-to-zero breakeven quarter). "
+                                 "Do not treat as a gap")
                 rows.append([sid, end, fy, fq, round(rec["val"] * scale, 6), units,
                              "api", src, "; ".join(notes)])
 
