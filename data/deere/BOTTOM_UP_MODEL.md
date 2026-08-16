@@ -446,7 +446,7 @@ Ranked by contribution to forecast risk.
    assumption in the model: the $1.2bn FY run-rate is management's own number, but the *timing* of the
    lap and the offsetting material inflation are estimates, and Q2 already showed a $272m one-off
    moving 2.5 points of enterprise margin in a single quarter.
-4. **The effective tax rate.** A 23.5% vs 26% assumption is worth **$0.11/share**. It is also the
+4. **The effective tax rate.** A 23.5% vs 26% assumption is worth **$0.15/share**. It is also the
    largest identified component of the bottom-up/top-down gap. Deere's guided rate is on a different
    basis (equipment operations) and has been wrong in the same direction three years running, but
    nothing guarantees a fourth.
@@ -455,8 +455,9 @@ Ranked by contribution to forecast risk.
    mis-specified — worldwide revenue moves ±$77m at 1σ. The Latin America basket is the weakest part:
    assumed BRL 72% / MXN 13% / USD 15%; at BRL 60% the PPA effect falls ~0.27pp, at 85% it rises about
    the same.
-6. **Reconciling items (+62).** An unmodelled residual line that has swung from −111 to +103 within the
-   sample and moves EPS ~$0.17 across the plausible range with no forecastable driver.
+6. **Reconciling items (+62).** An unmodelled residual line with no forecastable driver. It moves EPS
+   ~$0.12 across the +40 to +84 range used here, but it has swung from −111 to +103 within the sample
+   — a $0.60 spread — and I am leaning on eight consecutive positive quarters to narrow it.
 7. **Central Europe/CIS and Canada cells.** Individually small (each ~1–4% of revenue) but jointly
    ~$800m and essentially unforecastable: Canada has no usable driver at all (best result across every
    driver and lag is r = −0.44 at p = 0.050), and C. Eur/CIS carries a structural break from Deere's

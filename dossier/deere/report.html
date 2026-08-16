@@ -380,7 +380,8 @@
       <table>
         <thead><tr><th>Method</th><th class="n">Q3 FY2026</th><th class="n">Band</th><th class="wrap-ok">What it is</th></tr></thead>
         <tbody>
-          <tr><td>Regional bottom-up</td><td class="n">12,363</td><td class="n">11,881 – 12,845</td><td class="wrap-ok">All 24 segment × geography cells forecast on local drivers, then summed</td></tr>
+          <tr><td>Regional bottom-up — desks</td><td class="n">12,363</td><td class="n">11,881 – 12,845</td><td class="wrap-ok">24 cells forecast by six dedicated regional desks on local drivers</td></tr>
+          <tr><td>Regional bottom-up — matrix model</td><td class="n">~12,440</td><td class="n">—</td><td class="wrap-ok">The same 24 cells built independently from the extracted matrix and its own driver set</td></tr>
           <tr><td>Guidance-implied</td><td class="n">12,359</td><td class="n">11,637 – 13,168</td><td class="wrap-ok">FY guides less H1 actual, H2 split on Q3-share medians adjusted for management's cadence language</td></tr>
           <tr><td>Simple seasonality</td><td class="n">12,589</td><td class="n">11,541 – 14,101</td><td class="wrap-ok">Median Q2→Q3 sequential ratio of 0.942 applied to Q2 actual</td></tr>
           <tr class="total"><td>Adopted central</td><td class="n">12,350</td><td class="n">11,900 – 12,800</td><td class="wrap-ok">Bottom-up preferred — see below</td></tr>
@@ -394,6 +395,27 @@
     </div>
     <div class="callout warn">
       <p><strong>The error is asymmetric.</strong> The largest identifiable single weakness — an unexplained US PPA residual — is worth about +$100m upward, with nothing comparable pointing down. If the bottom-up is wrong, it is more likely wrong <em>low</em>. A print of 12,500–12,600 should not be treated as a surprise.</p>
+    </div>
+
+    <h3 style="margin-top:30px">Two independent builds of the same grid</h3>
+    <div class="col body-copy">
+      <p>The 24 cells were forecast twice, by separate teams with separate driver sets, specifically as a disagreement detector. On equipment revenue they land <strong>0.64% apart</strong> — $10,954m against $11,024m.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Cell</th><th class="n">Desks</th><th class="n">Matrix model</th><th class="n">Gap</th><th class="wrap-ok">Where they differ</th></tr></thead>
+        <tbody>
+          <tr><td>Latin America PPA</td><td class="n">820</td><td class="n">890</td><td class="n neg">+70</td><td class="wrap-ok">Desks weight the underproduction statement and hardest-comp effect; model lets a +10% BRL translation tailwind stop the decline short</td></tr>
+          <tr><td>Western Europe PPA</td><td class="n">695</td><td class="n">650</td><td class="n pos">−45</td><td class="wrap-ok">Both agree the euro tailwind collapses from +8.4% to +0.4%; they disagree on how much underlying demand offsets it</td></tr>
+          <tr><td>United States SAT</td><td class="n">1,700</td><td class="n">1,740</td><td class="n neg">+40</td><td class="wrap-ok">Restocking pace after last year's underproduction</td></tr>
+          <tr><td>United States PPA</td><td class="n">1,440</td><td class="n">1,480</td><td class="n neg">+40</td><td class="wrap-ok">How much credit to give the trough comp — Q3 FY2025 was −40.7%, the easiest base in the grid</td></tr>
+          <tr class="total"><td>Equipment total</td><td class="n">10,954</td><td class="n">11,024</td><td class="n">+70</td><td class="wrap-ok">+0.64%</td></tr>
+        </tbody>
+        <caption>USD millions. Every other cell agrees within $30m. The PPA gap is almost entirely Latin America, partly offset by Western and Central Europe.</caption>
+      </table>
+    </div>
+    <div class="callout warn">
+      <p><strong>Latin America PPA is the one cell to adjudicate.</strong> A $70m spread on an $850m cell, driven by a genuine analytical disagreement rather than a data error: Brazil delivered a record 180.6Mt soy crop (CONAB, 13 Aug), the real strengthened ~10%, and Plano Safra rates fell from 14.0% to 12.5% — all supportive. Against that, management explicitly said <em>"in Brazil we expect to underproduce retail demand, most notably in combines"</em>, and the cell faces its hardest comparative of the year. Shipments, not demand, decide this one — which argues for the lower number.</p>
     </div>
   </section>
 
@@ -615,6 +637,53 @@
   <section>
     <div class="shead">
       <div class="rule"></div>
+      <span class="eyebrow">Tested hypothesis</span>
+      <h2>Is Q3 revenue already locked in?</h2>
+    </div>
+    <div class="col body-copy">
+      <p>The proposition put to the swarm: Deere's order book fixes Q3 revenue in advance, so revenue should be forecast tightly and the real uncertainty belongs on margin. Verdict after four evidence agents and an adversarial adjudication: <strong>partially supported — right conclusion, wrong mechanism.</strong></p>
+    </div>
+
+    <div class="twoup">
+      <div class="panel">
+        <span class="eyebrow">What holds</span>
+        <ul>
+          <li>Order coverage reaches past Q3 in <strong>13 of 13</strong> Q2 calls since 2013; mean forward coverage 4.57 months.</li>
+          <li>Revenue is <strong>3.05× more predictable</strong> than margin one quarter ahead — sd 9.62% vs 29.34%, n=45, p&lt;0.0001.</li>
+          <li>Margin owns <strong>79%</strong> of PPA operating-profit surprise variance and 68% of EPS surprise; revenue only 15–21%.</li>
+          <li>Conditioning on Q2 guidance roughly halves revenue error, from 9.62% to a Q3 1-sigma of <strong>4.45%</strong>.</li>
+          <li>Q3 is empirically the <em>most</em> predictable quarter for enterprise revenue (MAE 6.3%).</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <span class="eyebrow">What breaks</span>
+        <ul>
+          <li><strong>The mechanism is not build time.</strong> Deere never once cites manufacturing cycle time as binding across 310 documents; order-to-production-start is only ~3 months.</li>
+          <li><strong>The order book pins the half, not the quarter.</strong> The Q3-vs-Q4 split term exceeds the guidance term for every target — 6.97% vs 3.07% on PPA sales.</li>
+          <li><strong>Costs don't drive realised profit.</strong> Production costs plus warranty contribute <em>negative</em> variance share (−22.6% PPA); volume/mix carries 65–90%.</li>
+          <li><strong>The edge is decaying.</strong> Revenue's predictability advantage falls from 3.39× (FY2015–20) to 1.54× and statistically insignificant in the FY2023–26 down-cycle.</li>
+          <li>It barely applies to Small Ag &amp; Turf, where Deere has never quantified order visibility in 14 years.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p><strong>The apparent contradiction resolves cleanly</strong>, and the resolution is the most useful thing this analysis produced. Two decompositions answer two different questions, and both are correct. On <em>realised</em> variation, volume/mix dominates — 85.6% pooled across 69 reconciled segment-quarters. On <em>unforecastable</em> variation, margin dominates — 79% of the surprise. Volume drives what actually changes, but volume is knowable in advance from the order book; what remains genuinely unpredictable is margin. So the practical prescription stands even though the stated mechanism does not: forecast revenue tight, hold the range wide on profit.</p>
+      <p>The real lead time is <strong>commercial, not industrial</strong>: early order programmes close 8–14 months before the use season, and rolling order books run 3–5 months out. That is what fixes the quarter.</p>
+    </div>
+
+    <div class="callout">
+      <p><strong>What management said on 21 May, and what it covers.</strong> <em>"Demand and that production plan for 2026 is set at this point. Our EOPs for this year have closed, and we know where we're going to build in combines, sprayers, and planters."</em> Waterloo large tractors: order books <em>"well into the fourth quarter."</em> Europe and South America: visibility <em>"extends through the third quarter and into the fourth."</em> C&amp;F: <em>"over 80% of production slots filled for the year."</em> Best estimate — essentially all of Q3 PPA orders and 80%+ of Q3 C&amp;F orders were in hand, covering roughly 70% of equipment revenue. Residual Q3 revenue uncertainty is shipment timing and cancellation, not demand arrival.</p>
+    </div>
+
+    <div class="callout warn">
+      <p><strong>The caveat that matters most for FY2026.</strong> Revenue predictability degrades 1.6–1.8× at cycle turning points, and management has called FY2026 the bottom of the large-ag cycle. The assumption is weakest exactly where we are relying on it — which is why the revenue band here sits near 1-sigma rather than inside it.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="shead">
+      <div class="rule"></div>
       <span class="eyebrow">Exposure</span>
       <h2>What would break this forecast</h2>
     </div>
@@ -626,6 +695,7 @@
           <li>A further IEEPA tariff refund tranche landing in Q3 would repeat the Q2 flattering effect.</li>
           <li>C&amp;F momentum has beaten guidance twice already this year; a third raise is plausible.</li>
           <li>The tax-rate cut to 24–26% is a direct EPS tailwind not yet fully in consensus models.</li>
+          <li><strong>No extended summer shutdown occurred.</strong> Searched specifically: zero John Deere WARN filings in calendar 2026, and the only PPA production news in the window is expansionary — 146 Waterloo workers called back for 8R tractor demand. The Ankeny layoffs completed 28 April fall inside Q2.</li>
         </ul>
       </div>
       <div class="panel">
@@ -633,7 +703,7 @@
         <ul>
           <li>June AEM tractor sales at −18.4% suggest PPA volume deteriorated inside the quarter.</li>
           <li>Brazilian combine underproduction was explicitly guided for Q2 <em>and</em> Q3 — a direct drag on Latin America PPA.</li>
-          <li>A longer-than-normal July shutdown would cut shipments below any seasonality model. Still being verified.</li>
+          <li>Shipment timing between Q3 and Q4 is the largest single error term — bigger than guidance error on every target — and Deere reallocates between the two most years.</li>
           <li>PPA margin guidance has never moved all year, signalling no management confidence in upside.</li>
         </ul>
       </div>
