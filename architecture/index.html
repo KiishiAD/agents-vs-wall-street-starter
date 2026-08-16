@@ -181,13 +181,13 @@
   <header class="wrap">
     <p class="eyebrow">Agents vs Wall Street</p>
     <h1>An evidence-to-forecast <em>compiler</em></h1>
-    <p class="lede">One reusable forecasting pipeline, run once per company. It turns frozen, reviewed evidence into a
-      compact signal handoff, then uses deterministic <span class="mono">Decimal</span> formulas to create auditable
-      forecast values and completed workbooks.</p>
+    <p class="lede">A reusable four-stage forecasting pipeline, run across the configured company metrics. It uses
+      source-backed profiles, evidence search, typed Pydantic-AI review, and deterministic <span class="mono">Decimal</span>
+      formulas to create auditable forecast values and completed workbooks.</p>
     <div class="guardrail">
       <p><b>The rule that keeps it honest.</b> A model may propose structured observations. It may <b>not</b> invent
-      sources, choose arbitrary weights, perform forecast arithmetic, or write workbook values. A number moves only
-      when its frozen evidence, passed review, and declared transformation pass deterministic validation.</p>
+      sources, choose arbitrary weights, perform forecast arithmetic, or write workbook values. Models produce only
+      extraction reasoning and analyst verdicts; deterministic code validates evidence and calculates every number.</p>
     </div>
     <div class="companies">
       <div class="chip"><img src="logos/home-depot.png" alt="">Home Depot <span class="tk">HD</span></div>
@@ -203,8 +203,8 @@
       <div class="sec-head reveal">
         <p class="eyebrow">How the work fans out</p>
         <h2>One worker, four companies, in parallel</h2>
-        <p>The runner can process companies in parallel. Each lane freezes its evidence; only a validated,
-          review-passed <span class="mono">signal_handoff.v1</span> can reach the forecast compiler.</p>
+        <p>The runner processes configured metric jobs in parallel. Each lane loads a source-backed profile, searches
+          its declared evidence needs, then sends only resolver-verified observations into the forecast compiler.</p>
       </div>
 
       <svg class="diagram reveal" viewBox="0 0 960 560" role="img" aria-label="Orchestration diagram">
@@ -237,7 +237,7 @@
         <foreignObject x="360" y="14" width="240" height="60">
           <div xmlns="http://www.w3.org/1999/xhtml" class="node-box node-orch">
             <div class="t">Centurion pipeline</div>
-            <div class="s">one source-frozen handoff per company</div>
+            <div class="s">Pydantic-AI harness + deterministic core</div>
           </div>
         </foreignObject>
 
@@ -263,7 +263,7 @@
 
         <!-- convergence -->
         <foreignObject x="340" y="466" width="280" height="64"><div xmlns="http://www.w3.org/1999/xhtml" class="node-box node-val">
-          <div class="t">Validate, compile &amp; write</div><div class="s">handoff → receipt → workbook</div>
+          <div class="t">Compile &amp; write</div><div class="s">receipt → forecast JSON → workbook</div>
         </div></foreignObject>
       </svg>
     </div>
@@ -274,26 +274,26 @@
     <div class="wrap">
       <div class="sec-head reveal">
         <p class="eyebrow">The worker</p>
-        <h2>Every company follows six stages</h2>
-        <p>Build a source-backed profile, resolve only approved evidence, validate a compact handoff, and compile
-          each target metric into an auditable forecast.</p>
+        <h2>Every metric follows six stages</h2>
+        <p>The pipeline is agent-assisted for research and review, but deterministic for admissibility, arithmetic,
+          challenge checks and workbook values.</p>
       </div>
 
       <div class="pipe reveal">
         <div class="pipe-track"></div>
         <div class="stages">
-          <div class="stage"><div class="num">1</div><h3>Profile</h3><div class="team red">Research</div>
-            <p>Freeze admissible sources for business model, calendar, segments, drivers, accounting and guidance.</p></div>
-          <div class="stage"><div class="num">2</div><h3>Signal map</h3><div class="team red">Declared rules</div>
-            <p>Name the 3–7 material signals that could move each metric, each with a declared role and direction.</p></div>
-          <div class="stage"><div class="num">3</div><h3>Resolve</h3><div class="team blue">Evidence only</div>
-            <p>Tavily searches only approved signals; exact quotes are checked against frozen source files.</p></div>
-          <div class="stage"><div class="num">4</div><h3>Handoff</h3><div class="team ind">Fail closed</div>
-            <p>Reject bad hashes, quotes, cutoff dates, units, bases, unresolved conflicts, or incomplete review.</p></div>
-          <div class="stage"><div class="num">5</div><h3>Compile</h3><div class="team red">Decimal engine</div>
-            <p>Use direct guidance, annual bridges, weighted-rate bridges, or explicit component sums.</p></div>
-          <div class="stage"><div class="num">6</div><h3>Receipt &amp; workbook</h3><div class="team ind">Replayable</div>
-            <p>Save the formula and evidence chain, then write only the three permitted workbook cells.</p></div>
+          <div class="stage"><div class="num">1</div><h3>Initialiser</h3><div class="team red">Profile</div>
+            <p>Load the validated company profile, target metric and declared source-backed signal map.</p></div>
+          <div class="stage"><div class="num">2</div><h3>Evidence search</h3><div class="team blue">Tavily + corpus</div>
+            <p>Search each signal's evidence need via Tavily when available; otherwise record the frozen-corpus fallback.</p></div>
+          <div class="stage"><div class="num">3</div><h3>Signal extraction</h3><div class="team blue">Five sub-agents</div>
+            <p>Typed Pydantic-AI sub-agents explain each quoted value; an ungrounded candidate is discarded.</p></div>
+          <div class="stage"><div class="num">4</div><h3>Reconcile</h3><div class="team ind">Deterministic</div>
+            <p>Resolvers verify dates, hashes, quotes, units, periods and accounting basis before accepting evidence.</p></div>
+          <div class="stage"><div class="num">5</div><h3>Analyst review</h3><div class="team red">Three reviewers</div>
+            <p>Parallel reviewers inspect the evidence chain and report a consensus; they do not calculate the number.</p></div>
+          <div class="stage"><div class="num">6</div><h3>Compile &amp; write</h3><div class="team ind">Decimal core</div>
+            <p>Deterministic code calculates the forecast, writes a replayable receipt, then fills the three workbook cells.</p></div>
         </div>
       </div>
     </div>
@@ -316,9 +316,9 @@
           <p class="ex"><b>e.g.</b> Management's stated Q3 revenue guidance range.</p></div>
         <div class="role" style="--rc:var(--driver)"><span class="tag">driver</span><h3>Moves the number</h3>
           <p>A quantified effect applied only through an explicit sourced formula.</p>
-          <p class="ex"><b>e.g.</b> an annual total reconciled to reported year-to-date results.</p></div>
+          <p class="ex"><b>e.g.</b> a verified order adjustment with a declared calculation.</p></div>
         <div class="role" style="--rc:var(--modifier)"><span class="tag">modifier</span><h3>Guides judgement</h3>
-          <p>Qualitative evidence retained as receipt context — never given false precision or a base-case weight.</p>
+          <p>Qualitative evidence guides the analysis but never receives a numerical base-case weight.</p>
           <p class="ex"><b>e.g.</b> "automotive demand stronger than expected."</p></div>
         <div class="role" style="--rc:var(--scenario)"><span class="tag">scenario&nbsp;trigger</span><h3>Conditional risk</h3>
           <p>A risk that only matters if an event occurs — lives in a scenario, not the base.</p>
@@ -333,23 +333,23 @@
       <div class="sec-head reveal">
         <p class="eyebrow">Traceability</p>
         <h2>Every number keeps its receipt</h2>
-        <p>No value reaches a forecast without an unbroken chain from a hashed source to a passed review and explicit
-          formula. Accepted inputs replay to the same output.</p>
+        <p>No value reaches a forecast without an unbroken chain from a hashed source to a resolver-verified observation
+          and explicit formula. Accepted inputs replay to the same output.</p>
       </div>
       <div class="chain" id="chain">
         <div class="link"><div class="ic">01</div><div class="tx"><b>Source</b><span>URL + publication time + frozen file + SHA-256 hash</span></div></div>
         <div class="chain-gap"></div>
         <div class="link"><div class="ic">02</div><div class="tx"><b>Exact quotation</b><span>verbatim text + locator, verified against the frozen source</span></div></div>
         <div class="chain-gap"></div>
-        <div class="link"><div class="ic">03</div><div class="tx"><b>Compact handoff</b><span>decimal facts, guidance, units, period and accounting basis</span></div></div>
+        <div class="link"><div class="ic">03</div><div class="tx"><b>Typed observation</b><span>decimal value, units, period and accounting basis</span></div></div>
         <div class="chain-gap"></div>
         <div class="link"><div class="ic">04</div><div class="tx"><b>Approved signal</b><span>role, direction, combination method, correlation group</span></div></div>
         <div class="chain-gap"></div>
-        <div class="link"><div class="ic">05</div><div class="tx"><b>Passed review &amp; validation</b><span>cutoff, hash, quote, unit, basis and conflict checks</span></div></div>
+        <div class="link"><div class="ic">05</div><div class="tx"><b>Validation decision</b><span>accepted or rejected, with a deterministic reason</span></div></div>
         <div class="chain-gap"></div>
         <div class="link"><div class="ic">06</div><div class="tx"><b>Explicit Decimal formula</b><span>the arithmetic the code actually ran</span></div></div>
         <div class="chain-gap"></div>
-        <div class="link"><div class="ic">07</div><div class="tx"><b>Receipt &amp; final value</b><span>saved as JSON, then written only to the required workbook cells</span></div></div>
+        <div class="link"><div class="ic">07</div><div class="tx"><b>Receipt &amp; final value</b><span>stage trace saved as JSON, then written only to the required workbook cells</span></div></div>
       </div>
     </div>
   </section>
@@ -366,15 +366,15 @@
         <div class="scope-col">
           <h3><span class="mark y">✓</span> Implemented now</h3>
           <ul>
-            <li><span class="mark y">✓</span> Strict JSON company profiles, signal maps and reviewed signal handoffs</li>
-            <li><span class="mark y">✓</span> Bounded Tavily search/extract and concurrent company lanes</li>
+            <li><span class="mark y">✓</span> Strict JSON company profiles and metric-specific signal maps</li>
+            <li><span class="mark y">✓</span> Tavily evidence search with explicit frozen-corpus fallback</li>
             <li><span class="mark y">✓</span> Frozen source hashes, exact quotations and cutoff checks</li>
             <li><span class="mark y">✓</span> Three-to-seven signals, one anchor and unit/basis validation</li>
-            <li><span class="mark y">✓</span> Direct guidance, annual bridge, weighted-rate bridge and component-sum methods</li>
+            <li><span class="mark y">✓</span> Pydantic-AI extraction and analyst review, with deterministic offline fallback</li>
+            <li><span class="mark y">✓</span> Biased-candidate inspection and source-grounding checks</li>
             <li><span class="mark y">✓</span> Deterministic forecast compilation in <span class="mono">Decimal</span></li>
-            <li><span class="mark y">✓</span> Historical weights derived from frozen facts; no arbitrary weights</li>
-            <li><span class="mark y">✓</span> Cutoff-safe review gates, conflict blocking and replayable JSON receipts</li>
-            <li><span class="mark y">✓</span> Safe workbook writer and an all-company handoff pipeline</li>
+            <li><span class="mark y">✓</span> Replayable receipts, resilient per-job retries and parallel execution</li>
+            <li><span class="mark y">✓</span> Safe workbook writer and one-command forecast / check run</li>
           </ul>
         </div>
         <div class="scope-col">
@@ -385,7 +385,7 @@
             <li><span class="mark n">✕</span> Arbitrary model-generated weights</li>
             <li><span class="mark n">✕</span> Unrestricted LLM arithmetic or worksheet edits</li>
             <li><span class="mark n">✕</span> A universal financial ontology</li>
-            <li><span class="mark n">✕</span> Forecasts from incomplete, unreviewed or undated evidence</li>
+            <li><span class="mark n">✕</span> LLM-written forecast values or direct workbook submission</li>
           </ul>
         </div>
       </div>
