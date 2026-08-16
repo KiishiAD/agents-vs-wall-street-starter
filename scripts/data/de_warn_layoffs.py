@@ -314,6 +314,7 @@ with open(OUT, "w", newline="") as fh:
 warn_ia = [r for r in rows if r[10] == "warn-notice" and r[4] == "IA" and r[7] == "employees_affected"]
 print(f"rows written: {len(rows)} -> {OUT}")
 for y in ("2014", "2015", "2018", "2024", "2025", "2026"):
-    tot = sum(int(r[8]) for r in rows if r[1].startswith(y) and r[7] == "employees_affected" and r[2] != "Multiple Quad Cities sites")
-    rec = sum(int(r[8]) for r in rows if r[1].startswith(y) and r[7] in ("employees_recalled", "employees_hired_new"))
+    ev = [r for r in rows if not r[0].endswith("_fq")]
+    tot = sum(int(r[8]) for r in ev if r[1].startswith(y) and r[7] == "employees_affected" and r[2] != "Multiple Quad Cities sites")
+    rec = sum(int(r[8]) for r in ev if r[1].startswith(y) and r[7] in ("employees_recalled", "employees_hired_new"))
     print(f"  {y}: layoffs {tot:>5}   recalls+hires {rec:>4}")

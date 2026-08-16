@@ -613,11 +613,15 @@ def sanity_checks(central, low, high, wedge, cols_c) -> None:
     for k, v in trend.items():
         say(f"| {k} | {v*100:+.1f}% | {fmt(12018*(1+v))} |")
     say()
-    say("These run 12,589-12,979, ABOVE (b1). The reason is a comp artefact and it "
-        "matters: Q1 and Q2 FY2026 grew against FY2025 quarters that were down 30% and "
-        "16% YoY, whereas Q3 FY2025 was down only 9% YoY. Growing the Q3 comp at an "
-        "H1-derived rate implicitly assumes the comp is as easy as H1's; it is not. "
-        "Within (b) I therefore weight (b1).")
+    say("These run 12,589-13,576, at or ABOVE (b1). The reason is a comp artefact and "
+        "it matters: Q1 and Q2 FY2026 grew against FY2025 quarters that were down 30% "
+        "and 16% YoY, whereas Q3 FY2025 was down only 9% YoY. Growing the Q3 comp at "
+        "an H1-derived rate implicitly assumes the comp is as easy as H1's; it is not. "
+        "Within (b) I therefore weight (b1). Note the two agree exactly at the "
+        "Q2-only rate (both 12,589), which is not a coincidence -- applying last "
+        "quarter's YoY rate to the year-ago quarter and applying the year-ago "
+        "sequential ratio to the current quarter are the same operation when the "
+        "seasonal ratio used is FY2025's own 0.942.")
     b_cen = b1_cen
     say()
 
@@ -627,11 +631,14 @@ def sanity_checks(central, low, high, wedge, cols_c) -> None:
     say(f"Sum of the 24 desk cells: **{fmt(grand_c)}** "
         f"({yoy(grand_c, Q3FY25_PUBLISHED_TOTAL):+.1f}% YoY).")
     say()
-    say("A defensible aggregate band, rather than the naive sum-of-lows / sum-of-highs: "
-        "treat the four US cells and Latin America PPA as the correlated block (they "
-        "share the North American large-ag and the Brazil-underproduction drivers) and "
-        "let the remaining 19 cells partially diversify. Quadrature over the six "
-        "regional row-ranges, treating each region's own range as its 90% span:")
+    say("A more defensible aggregate band than the naive sum-of-lows / sum-of-highs: "
+        "add the six REGIONAL row-ranges in quadrature. Within a region the cells are "
+        "strongly correlated (one FX rate, one farm economy, one order book) so their "
+        "ranges are added arithmetically; across regions they are treated as "
+        "independent, which is the assumption doing the work here and is only "
+        "partly true -- the US large-ag cycle, the Brazil cycle and global "
+        "roadbuilding are not orthogonal. Read the band as a floor on the "
+        "uncertainty, not a ceiling:")
     var = 0.0
     for g in GEOS:
         half = 0.5 * (sum(high[g].values()) - sum(low[g].values()))
@@ -697,6 +704,40 @@ def weakest_cells(central, low, high) -> List[Tuple]:
     # the uncertainty of the grand total.  That is the correct ranking for "most
     # uncertainty AND most weight".
     rows.sort(key=lambda r: -r[3])
+    say("## 4. DIVERGENCES")
+    say()
+    say("Divergences are qualitative and are set out in full in "
+        "data/deere/regional/REGIONAL_ROLLUP.md section 4. The two that are "
+        "arithmetic, and therefore reproducible here, are printed in section 3 above: "
+        "the segment-level (c)-minus-(a) table, and the US-PPA residual test below.")
+    say()
+    # The US desk sized its residual method off assumed values for the other five
+    # desks. Those desks then filed different numbers. Recompute the residual with
+    # what they actually filed.
+    us_assumed = {"Canada": 295, "Western Europe": 711, "Central Europe & CIS": 331,
+                  "Latin America": 897, "Asia/Africa/Oceania/ME": 359}
+    global_ppa_assumed = 4060
+    filed = {g: central[g]["PPA"] for g in us_assumed}
+    say("US-PPA residual test (the roll-up's central tension):")
+    say()
+    say("| Region | US desk ASSUMED | region desk FILED | diff |")
+    say("|---|---:|---:|---:|")
+    for g in us_assumed:
+        say(f"| {g} | {fmt(us_assumed[g])} | {fmt(filed[g])} | "
+            f"{filed[g]-us_assumed[g]:+,.0f} |")
+    say(f"| **Sum of other five** | **{fmt(sum(us_assumed.values()))}** | "
+        f"**{fmt(sum(filed.values()))}** | **{sum(filed.values())-sum(us_assumed.values()):+,.0f}** |")
+    say()
+    resid_assumed = global_ppa_assumed - sum(us_assumed.values())
+    resid_filed = global_ppa_assumed - sum(filed.values())
+    say(f"On the US desk's own assumed global 606 PPA of {fmt(global_ppa_assumed)}, its "
+        f"residual for the US was {fmt(resid_assumed)}. With what the other five desks "
+        f"ACTUALLY filed, the same residual is {fmt(resid_filed)} -- "
+        f"{resid_filed - central['United States']['PPA']:+,.0f} above the "
+        f"{fmt(central['United States']['PPA'])} the US desk carried, and "
+        f"{'above' if resid_filed > DESK['United States']['PPA'][2] else 'inside'} "
+        f"its stated high of {fmt(DESK['United States']['PPA'][2])}.")
+    say()
     say("## 5. WEAKEST CELLS -- ranked by dollars of uncertainty contributed")
     say()
     say("Ranking metric is the ABSOLUTE dollar width of the desk's own range, because "
