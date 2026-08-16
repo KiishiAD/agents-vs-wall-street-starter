@@ -1,7 +1,7 @@
 ---
 name: company-profile
 description: Build lightweight company profiles as structured JSON.
-version: 0.2.0
+version: 0.3.0
 author: Kaylan, Hermes Agent
 license: MIT
 platforms: [linux, macos, windows]
@@ -154,6 +154,12 @@ Defaults:
 - `source_policy.public_research_allowed` defaults to `true`.
 - The skill must work when no target metrics are supplied.
 
+### Invocation inputs versus repository metadata
+
+Populate `target_period` and `target_metrics_supplied` only from normalized invocation inputs. A company index, challenge configuration, filename, workbook, or other repository metadata is discovery context—not caller input—unless the caller or invocation wrapper explicitly passes those values through the input contract.
+
+When no target period or metrics are supplied, return `target_period: null`, `target_metrics_supplied: []`, and `metric_lenses: []`. Do not infer challenge metrics merely because they exist elsewhere in the repository.
+
 ### Input failure behaviour
 
 Return `status: "error"` rather than guessing when:
@@ -286,8 +292,10 @@ Do not select documents merely because they are newest. Exclude by default:
 Select no more than three core repository documents:
 
 1. **Latest annual report:** stable business model, products, customers, segments, geographies, fiscal context, accounting, and structural exposures.
-2. **Latest results release or trading update:** current structure, guidance practices, business changes, and current conditions.
+2. **One latest results source:** choose the quarterly or half-year filing when accounting, segments, balance sheet, or working capital is material; choose the filed earnings release or official trading update when guidance and current operating conditions are the main need.
 3. **Latest useful earnings call or investor presentation:** management framing, operational drivers, cyclicality, seasonality, and company-specific concepts.
+
+Do not use both the periodic filing and earnings release as core sources for the same period. Open the second only under the optional-document rule when a material field remains unresolved. Treat a repository index as source-discovery metadata, not a source-log entry; substantive claims must come from an inspected underlying document.
 
 Permit one optional repository document only when:
 
@@ -336,7 +344,7 @@ Default ceilings:
 | Broad follow-up section reads | Maximum 2 across the profile |
 | Unique extracted source text | Target 50,000–65,000 characters; hard stop at 72,000 |
 | Extracted-source token guide | Approximately 12,000–18,000 tokens; model-dependent |
-| Final JSON | Approximately 2,000–3,500 tokens |
+| Final JSON | Target 14,000 characters; hard stop 16,000; approximately 2,000–3,500 tokens |
 | Source-log entries | Usually 3–6 |
 | Target runtime | Approximately 8–12 minutes |
 
@@ -379,6 +387,7 @@ Exclude:
 - Resolve identity using the supplied exchange or jurisdiction where necessary.
 - Set the effective research cutoff.
 - Preserve the original target metric labels and units.
+- Keep repository-discovered periods and metrics separate from normalized invocation inputs.
 
 Completion criterion: one company and one cutoff are unambiguous, or return `status: "error"`.
 
@@ -394,9 +403,10 @@ Completion criterion: every supplied metric has a justified classification, even
 
 - Inspect the company index or equivalent source inventory.
 - Identify the latest useful annual report before the cutoff.
-- Identify the latest useful results release or trading update before the cutoff.
+- Choose one latest periodic filing or results release before the cutoff using the default-source decision rule.
 - Identify the latest useful call or presentation before the cutoff.
 - Remove duplicate or administratively irrelevant candidates.
+- Confirm that an index and a second same-period results document are not being counted as core sources.
 - Add an optional fourth document only if permitted by the gap or metric rules.
 - Record the exact selected paths and initialize the extracted-character counter before substantive extraction.
 
@@ -506,7 +516,7 @@ Return all of these top-level keys in this order:
 
 ```json
 {
-  "schema_version": "0.2.0",
+  "schema_version": "0.3.0",
   "status": "complete",
   "profile_metadata": {
     "as_of_date": "2026-08-16",
@@ -514,14 +524,17 @@ Return all of these top-level keys in this order:
     "profile_depth": "lightweight",
     "target_period": null,
     "target_metrics_supplied": [],
-    "source_policy": "repository_first_public_allowed"
+    "source_policy": {
+      "repository_first": true,
+      "public_research_allowed": true
+    }
   },
   "company_identity": {
     "legal_name": null,
     "common_name": null,
     "ticker": null,
     "exchange": null,
-    "jurisdiction": null,
+    "incorporation_jurisdiction": null,
     "headquarters": null,
     "reporting_currency": null,
     "industry": null,
@@ -541,7 +554,12 @@ Return all of these top-level keys in this order:
     "operating_footprint": []
   },
   "reporting_context": {
-    "fiscal_year_end": null,
+    "fiscal_year_end": {
+      "convention": null,
+      "latest_reported_date": null,
+      "weeks_in_latest_reported_year": null,
+      "field_provenance": {}
+    },
     "reporting_frequency": null,
     "accounting_standard": null,
     "reporting_currency": null,
@@ -595,9 +613,28 @@ Return all of these top-level keys in this order:
 }
 ```
 
-Schema `0.2.0` is intentionally incompatible with `0.1.0`: narrative strings become sourced-claim objects, major classifications become sourced assessments, and field-level provenance maps are required for grouped scalars.
+Schema `0.3.0` supersedes `0.2.0`. It preserves claim-level provenance while normalizing source policy, incorporation jurisdiction, and fiscal-year-end semantics.
+
+### Contract-wide type rules
+
+- Treat the top-level contract and documented nested contracts as closed: do not add undocumented keys.
+- Keep every required top-level key present in the specified order.
+- Use ISO `YYYY-MM-DD` strings for exact dates and `null` when an exact date is unknown.
+- Use JSON booleans for policy and guidance values; never encode them as strings.
+- Use arrays only for repeated items and keep every array homogeneous under its documented object contract.
+- Use `SRC-001`, `SRC-002`, and so on for source IDs; IDs must be unique and all references must resolve.
+- Enforce documented enum values exactly and reject rather than normalize an unsupported output value silently.
 
 ## Nested object contracts
+
+### Normalized identity, policy, and fiscal calendar
+
+- Input `company.jurisdiction` is an identity-resolution hint. Output `company_identity.incorporation_jurisdiction` means the company's legal place of incorporation; do not substitute headquarters, listing venue, or principal market.
+- `profile_metadata.source_policy` preserves the normalized input object with required boolean keys `repository_first` and `public_research_allowed`.
+- `reporting_context.fiscal_year_end.convention` is the recurring convention where disclosed, such as "Sunday nearest January 31".
+- `latest_reported_date` is the most recent exact fiscal year-end date established before the cutoff.
+- `weeks_in_latest_reported_year` is an integer such as `52` or `53`, or `null` when not established.
+- `fiscal_year_end.field_provenance` maps each non-null fiscal-calendar subfield to its basis and evidence. Do not add a parent-level `reporting_context.field_provenance.fiscal_year_end` entry.
 
 ### Sourced claim
 
@@ -614,7 +651,7 @@ Use this object for `company_description`, `business_model.summary`, every narra
 }
 ```
 
-Add `rationale` only when required by the basis rules. Keep `source_locators` optional and compact. Bare externally verifiable strings are not allowed in claim-bearing fields under schema `0.2.0`.
+Add `rationale` only when required by the basis rules. Keep `source_locators` optional and compact. Bare externally verifiable strings are not allowed in claim-bearing fields under schema `0.3.0`.
 
 The following arrays contain sourced-claim objects rather than strings:
 
@@ -932,6 +969,36 @@ When sources identify operating lines or concepts but do not disclose their stan
 
 ## Writing and compression rules
 
+Default output caps:
+
+| Field or item | Maximum |
+|---|---:|
+| Products and services | 4 |
+| Customer groups | 4 |
+| Distribution channels | 5 |
+| Segments | 4 |
+| Geographies | 4 |
+| Accounting conventions | 5 |
+| Company-defined terms | 5 |
+| Each financial-driver array | 4 |
+| External exposures | 7 |
+| Company-specific factors | 5 |
+| Uncertainties and gaps | 5 |
+| Sources | 6 |
+| Metric lenses | One per supplied moderate/high metric; omit generic lenses unless needed |
+
+Default string caps:
+
+| String | Maximum characters |
+|---|---:|
+| Company description | 300 |
+| Claim statement | 220 |
+| Judgment or calculation rationale | 240 |
+| Gap issue | 350 |
+| Source locator | 120 |
+
+Target at most 14,000 serialized JSON characters and enforce a 16,000-character hard stop. If the draft exceeds either threshold, remove lower-materiality claims and duplication; never remove required keys, basis labels, provenance, or material gaps. Exceed a per-array cap only when omission would materially misrepresent the company, and retain only the minimum necessary overage.
+
 - Prefer compact arrays of distinct items over long narrative paragraphs.
 - Keep the company description to one or two sentences.
 - Keep each driver or exposure concise and causal: state how it relates to the company.
@@ -968,6 +1035,34 @@ Stop normal research when all applicable conditions below are satisfied:
 
 Stop as soon as these conditions are satisfied; do not continue merely because research budget remains. Independently, the 72,000-character limit is a mandatory stop even when a coverage row remains unresolved; record the unresolved material issue in `uncertainties_and_gaps` and proceed to profile construction.
 
+## Production and evaluation modes
+
+**Production mode is the default.** Return exactly one schema `0.3.0` profile object and nothing else. Do not add runtime, search counts, token estimates, test results, or evaluator commentary to the profile.
+
+**Evaluation mode belongs to an external tester or invocation wrapper.** Build the same production-valid profile without changing its schema, then report test telemetry separately. Useful telemetry includes runtime seconds, selected-document count, public-source count, targeted-search count, unique extracted characters, serialized profile characters, schema validity, unsupported-claim count, and repository changes. Evaluation telemetry must never appear as a top-level profile key or source-log entry.
+
+## Maintenance benchmark gate
+
+For future material changes to this skill, exercise Home Depot, Analog Devices, Hays, and Deere when their repository corpora are available; together they cover retailer, semiconductor, staffing, industrial, and financing structures. At minimum cover: no supplied metrics; a generic metric; a company-defined metric; a narrow segment metric; public research disabled; a cutoff before the newest document; ambiguous identity; and a material unresolved conflict.
+
+Use these acceptance gates:
+
+| Check | Required result |
+|---|---:|
+| Valid JSON and exact top-level contract | 100% |
+| Post-cutoff sources | 0 |
+| Unsupported sampled claims | 0 |
+| Duplicate or unresolved source IDs | 0 |
+| Core repository documents | No more than 3 |
+| Optional repository documents | No more than 1 |
+| Public sources | No more than 2 |
+| Unique extracted source text | No more than 72,000 characters |
+| Serialized profile | No more than 16,000 characters |
+| Repository files changed by profile execution | 0 |
+| Forecasts, signal selections, or recommendations | 0 |
+
+Run the no-metric case first because it verifies that repository metadata is not silently promoted into invocation inputs. A benchmark failure blocks a schema-version release until fixed or explicitly documented as a known limitation.
+
 ## Final verification checklist
 
 Before returning the output, verify:
@@ -978,11 +1073,14 @@ Before returning the output, verify:
 - [ ] The effective cutoff is explicit.
 - [ ] Every source was published on or before the cutoff.
 - [ ] Original target metric labels and units are preserved.
+- [ ] Target period and metrics came from normalized invocation inputs, not repository metadata.
 
 ### Research discipline
 
 - [ ] Repository materials were considered first.
 - [ ] The source set is authoritative, relevant, and non-duplicative.
+- [ ] Exactly one same-period periodic filing or results release was treated as the core latest-results source.
+- [ ] Repository indexes were used for discovery only and were not logged as substantive sources.
 - [ ] No more than three core and one optional repository document were used without an explicit exception.
 - [ ] Public research was used only for a material gap and stayed within the two-source limit.
 - [ ] Every source-log entry was actually inspected and used.
@@ -1030,12 +1128,18 @@ Before returning the output, verify:
 
 - [ ] Output is valid JSON.
 - [ ] All required top-level keys are present in the required order.
-- [ ] `schema_version` is `0.2.0`.
+- [ ] No undocumented top-level or nested keys were added.
+- [ ] `schema_version` is `0.3.0`.
 - [ ] `status` is `complete`, `partial`, or `error`.
+- [ ] `source_policy` is an object containing the two required booleans.
+- [ ] Incorporation jurisdiction is not confused with headquarters or listing venue.
+- [ ] Fiscal-year-end convention, exact date, and week count use their normalized nested fields.
 - [ ] Unknown scalar values are `null`, not fabricated text.
 - [ ] Unsupported arrays are empty rather than padded.
 - [ ] Source IDs are unique.
-- [ ] Final JSON is approximately 2,000–3,500 tokens unless a justified exception is recorded.
+- [ ] Default array and string caps were respected with only minimum necessary overage.
+- [ ] Serialized JSON does not exceed 16,000 characters.
+- [ ] Production output contains no evaluation telemetry.
 - [ ] There is no Markdown fence, preamble, explanation, or text after the JSON.
 
 If any check fails, correct the profile before returning it. If the failure cannot be corrected within the bounded research policy, return `partial` with a gap or `error` with a structured error record.
