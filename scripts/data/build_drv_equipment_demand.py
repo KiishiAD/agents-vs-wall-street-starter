@@ -124,6 +124,59 @@ def load_aem(path):
     return out
 
 
+def merge_globenewswire(aem, path):
+    """Add months that survive only as a GlobeNewswire press release.
+
+    The FinancialContent mirror of the AEM release carries the same table as
+    the PDF.  Cross-checking 112 overlapping cells against the PDFs gave 111
+    exact matches and one typo in the HTML (see the companion .md), so the PDF
+    is always preferred where both exist; the mirror is used only to fill
+    months with no surviving PDF.
+    """
+    if not os.path.exists(path):
+        return aem, []
+    gnw = json.load(open(path))
+    added = []
+    for ym, rec in sorted(gnw.items()):
+        y, m = int(ym[:4]), int(ym[5:])
+        for key, nums in rec["table"].items():
+            for idx, kind in ((0, "month"), (3, "ytd"), (6, "inventory")):
+                if idx >= len(nums):
+                    continue
+                k = (key, kind, y, m)
+                if k in aem:
+                    continue
+                aem[k] = dict(value=nums[idx], source=rec["source"],
+                              vintage=ym, n=1,
+                              note="Source: AEM press release as syndicated by "
+                                   "FinancialContent (GlobeNewswire); used "
+                                   "because no AEM PDF for this month survives "
+                                   "in the Internet Archive.")
+                if kind == "month":
+                    added.append((key, y, m))
+    return aem, added
+
+
+def validate(aem):
+    """Internal consistency checks on the extracted AEM table."""
+    probs = []
+    months = sorted({(y, m) for (_, kind, y, m) in aem if kind == "month"})
+    for (y, m) in months:
+        def g(k):
+            r = aem.get((k, "month", y, m))
+            return r["value"] if r else None
+        a, b, c = (g("tractor_2wd_lt40hp"), g("tractor_2wd_40to100hp"),
+                   g("tractor_2wd_100hp_plus"))
+        t2, t4, tt = g("tractor_2wd_total"), g("tractor_4wd"), g("tractor_total")
+        if None not in (a, b, c, t2) and abs(a + b + c - t2) > 1:
+            probs.append("%04d-%02d 2WD components %g+%g+%g=%g != total %g"
+                         % (y, m, a, b, c, a + b + c, t2))
+        if None not in (t2, t4, tt) and abs(t2 + t4 - tt) > 1:
+            probs.append("%04d-%02d 2WD %g + 4WD %g != total %g"
+                         % (y, m, t2, t4, tt))
+    return probs, len(months)
+
+
 def fmt(v):
     if v is None:
         return ""
@@ -180,43 +233,68 @@ def build_aem_rows(aem):
         if kind == "inventory":
             inv[key][(y, m)] = rec
 
+    # Annual (December YTD) totals, needed for the trailing-12m identity below
+    annual = {}
+    for (key, kind, y, m), rec in aem.items():
+        if kind == "ytd" and m == 12:
+            annual[(key, y)] = rec["value"]
+    ytd = {}
+    for (key, kind, y, m), rec in aem.items():
+        if kind == "ytd":
+            ytd[(key, y, m)] = rec["value"]
+
     for key, sid in MOS_SERIES.items():
-        iv, mv = inv.get(key, {}), monthly.get(key, {})
-        # raw inventory level in units
+        iv = inv.get(key, {})
+        # ---- raw inventory level in units.
+        # AEM measures this at the BEGINNING of the report month, so it is
+        # stamped at the end of the PRECEDING month, not the report month.
         for (y, m), rec in sorted(iv.items()):
-            rows.append([sid.replace("_months", "_units"), eom(y, m), y, cq(m),
-                         fmt(rec["value"]), "count", "vendor", rec["source"],
+            py, pm = (y, m - 1) if m > 1 else (y - 1, 12)
+            rows.append([sid.replace("_months", "_units"), eom(py, pm), py,
+                         cq(pm), fmt(rec["value"]), "count", "vendor",
+                         rec["source"],
                          AEM_BOILERPLATE + " NEW-equipment dealer/field "
-                         "inventory in units at the START of the report month "
-                         "(AEM 'Beginning Inventory'; the pre-2011 Flash "
+                         "inventory in units. AEM reports this as 'Beginning "
+                         "Inventory' of the report month (the pre-2011 Flash "
                          "Reports label the same column 'U.S. Field "
-                         "Inventory'). Covers new machines in the dealer "
-                         "channel only -- used inventory is NOT included."])
-        # months of supply = inventory / trailing-12m average monthly retail
+                         "Inventory'); beginning-of-month stock is stamped "
+                         "here at the END of the PRECEDING month, so this row "
+                         "is the %04d-%02d report's opening stock. Covers NEW "
+                         "machines in the dealer channel only -- used "
+                         "inventory is NOT included and is not published."
+                         % (y, m)])
+
+        # ---- months of supply.
+        # Denominator = trailing-12-month retail sales through the same date,
+        # recovered with the identity
+        #     T12(y,m-1) = YTD(y,m-1) + Annual(y-1) - YTD(y-1,m-1)
+        # which needs only the report for month m-1 (it prints BOTH years'
+        # year-to-date columns) plus the prior year's December total.  That is
+        # far better covered than requiring 12 consecutive monthly prints.
         for (y, m) in sorted(iv):
-            hist = []
-            yy, mm = y, m
-            for _ in range(12):
-                mm -= 1
-                if mm == 0:
-                    mm, yy = 12, yy - 1
-                if (yy, mm) in mv:
-                    hist.append(mv[(yy, mm)]["value"])
-            if len(hist) < 12:
+            py, pm = (y, m - 1) if m > 1 else (y - 1, 12)
+            if pm == 12:
+                t12 = annual.get((key, py))
+            else:
+                a = ytd.get((key, py, pm))
+                b = ytd.get((key, py - 1, pm))
+                c = annual.get((key, py - 1))
+                t12 = (a + c - b) if None not in (a, b, c) else None
+            if not t12 or t12 <= 0:
                 continue
-            avg = sum(hist) / 12.0
-            if avg <= 0:
-                continue
-            rows.append([sid, eom(y, m), y, cq(m), "%.2f" % (iv[(y, m)]["value"] / avg),
+            rows.append([sid, eom(py, pm), py, cq(pm),
+                         "%.2f" % (iv[(y, m)]["value"] / (t12 / 12.0)),
                          "ratio", "inference", iv[(y, m)]["source"],
-                         "DERIVED months of supply = AEM beginning new-unit "
-                         "field inventory divided by the average monthly "
-                         "retail unit sales of the preceding 12 months. Uses "
-                         "a trailing-12m denominator rather than the current "
-                         "month because US tractor retail sales are strongly "
-                         "seasonal. Requires 12 prior monthly observations, so "
-                         "it is blank wherever the monthly series has a gap. "
-                         "NEW equipment only. " + AEM_BOILERPLATE])
+                         "DERIVED months of supply = AEM new-unit dealer field "
+                         "inventory at this date divided by average monthly "
+                         "retail unit sales over the trailing 12 months ending "
+                         "the same date. A trailing-12m denominator is used "
+                         "because US tractor and combine retail sales are "
+                         "strongly seasonal, so a current-month denominator "
+                         "would swing wildly. The trailing-12m total is "
+                         "reconstructed as YTD(this year) + prior-year annual "
+                         "- YTD(prior year), all read off the same AEM "
+                         "reports. NEW equipment only. " + AEM_BOILERPLATE])
     return rows
 
 
@@ -279,29 +357,34 @@ def build_used_index(sh_rows):
         if len(pts) < 6:
             continue
         # only chain across CONSECUTIVE months; a gap breaks the chain
-        lvl, prev = 100.0, None
+        lvl, prev, run = 100.0, None, 0
         for period_end, pct, src in pts:
             y, m, _ = (int(x) for x in period_end.split("-"))
-            if prev is not None:
-                gap = (y - prev[0]) * 12 + (m - prev[1])
-                if gap != 1:
-                    # restart the chain rather than silently interpolate
-                    lvl = 100.0
+            gap = None if prev is None else (y - prev[0]) * 12 + (m - prev[1])
+            restart = gap != 1
+            if restart:
+                lvl, run = 100.0, run + 1   # never interpolate across a gap
             else:
-                gap = None
-            if prev is not None and gap == 1:
                 lvl *= (1.0 + pct / 100.0)
             prev = (y, m)
             suffix = "" if cat_sid == "us_used_tractor" else "_combines"
+            flag = ("CHAIN RESTART (run %d begins here): the source releases "
+                    "skip at least one month before this date, so this 100.00 "
+                    "is a NEW base, NOT a move in value. Do not difference "
+                    "this row against the row before it. " % run) if restart \
+                else "Run %d. " % run
             out.append(["idx_used_equipment_values" + suffix, period_end, y,
                         cq(m), "%.2f" % lvl, "index", "inference", src,
+                        flag +
                         "DERIVED index of %s auction values, built by chain-"
                         "linking the month-over-month percentage changes "
                         "Sandhills publishes. Base = 100.00 at the first month "
                         "of each unbroken run of consecutive monthly "
-                        "observations; the chain RESTARTS at 100 after any gap "
-                        "in the source releases, so compare levels only within "
-                        "a run. Not a Sandhills-published index level."
+                        "observations, so levels are comparable ONLY within a "
+                        "run. Not a Sandhills-published index level; the "
+                        "underlying observables are the "
+                        "us_used_*_auction_value_mom_pct / _yoy_pct series, "
+                        "which are preferable for modelling."
                         % label])
     return out
 
@@ -316,7 +399,19 @@ def main():
 
     aem_json = os.path.join(scratch, "aem_raw_observations.json")
     if os.path.exists(aem_json):
-        rows += build_aem_rows(load_aem(aem_json))
+        aem = load_aem(aem_json)
+        aem, added = merge_globenewswire(aem, os.path.join(scratch, "gnw.json"))
+        if added:
+            print("gap-filled %d category-months from the GlobeNewswire "
+                  "mirror: %s" % (len(added),
+                                  sorted({(y, m) for _, y, m in added})),
+                  file=sys.stderr)
+        probs, nmonths = validate(aem)
+        print("internal consistency: %d months checked, %d failures"
+              % (nmonths, len(probs)), file=sys.stderr)
+        for p in probs[:20]:
+            print("  !! " + p, file=sys.stderr)
+        rows += build_aem_rows(aem)
     else:
         print("WARNING: no AEM extraction at %s" % aem_json, file=sys.stderr)
 

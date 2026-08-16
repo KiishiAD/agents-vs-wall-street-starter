@@ -228,6 +228,16 @@ def main():
                 "netWgt_kg": r.get("netWgt"),
                 "isReported": r.get("isReported"),
                 "isAggregate": r.get("isAggregate"),
+                # Discriminators. Some reporters (Brazil, India) return the same
+                # reporter/partner/period/commodity several times, split by customs
+                # procedure, mode of transport and second partner. Dropping these
+                # fields silently multiplies rows and lets a partial breakdown be
+                # mistaken for the total, so they must be carried through and the
+                # true aggregate selected downstream (C00 / mot 0 / mos 0 / p2 0).
+                "customsCode": r.get("customsCode"),
+                "motCode": r.get("motCode"),
+                "mosCode": r.get("mosCode"),
+                "partner2Code": r.get("partner2Code"),
                 "scope": meta["scope"],
             })
         return out

@@ -105,8 +105,22 @@ def main():
     args = ap.parse_args()
 
     pnames = load_partner_names(args.partners)
-    recs = [json.loads(l) for l in open(args.comtrade) if l.strip()]
-    sys.stderr.write("comtrade records: %d\n" % len(recs))
+    raw = [json.loads(l) for l in open(args.comtrade) if l.strip()]
+
+    # Keep only the true aggregate row. Some reporters (Brazil, India) return the
+    # same reporter/partner/period/commodity several times, split by customs
+    # procedure (customsCode), mode of transport (motCode), mode of supply
+    # (mosCode) and second partner. The total carries C00 / 0 / "0" / 0; the rest
+    # are partial breakdowns that would otherwise be double counted and, worse,
+    # could be silently mistaken for the total. US responses only ever contain the
+    # aggregate, so this filter is a no-op there.
+    recs = [r for r in raw
+            if (r.get("customsCode") in (None, "C00")
+                and r.get("motCode") in (None, 0)
+                and r.get("mosCode") in (None, "0")
+                and r.get("partner2Code") in (None, 0))]
+    sys.stderr.write("comtrade records: %d raw -> %d aggregate-only\n"
+                     % (len(raw), len(recs)))
 
     rows = []
 
@@ -394,8 +408,17 @@ def diagnostics(monthly, annual_world, annual_partner, corpus_path, geo_path, di
         "hs8432+8433+8701 (all ag)": ["8432", "8433", "8701"],
     }
 
+    # Map each period end to its (fiscal_year, fiscal_quarter) so year-on-year
+    # pairs the SAME quarter a year earlier. The 10-Q geography matrix only
+    # carries Q1-Q3 of each year, so positional lags are wrong: index i-4 in this
+    # sequence is not the same quarter one year back, it is one year and one
+    # quarter back. Matching on the label is the only correct way.
+    fq = {}
+    for r in grows:
+        fq[r["period_end"]] = (int(r["fiscal_year"]), r["fiscal_quarter"])
+
     for label, codes in combos.items():
-        pairs_nonus, pairs_us = [], []
+        series = {}  # (fy, q) -> (exports, nonus, us)
         for pe in sorted(nonus):
             months = fiscal_quarter_months(pe)
             tot = 0.0
@@ -409,27 +432,39 @@ def diagnostics(monthly, annual_world, annual_partner, corpus_path, geo_path, di
                     tot += v
                 if not ok:
                     break
-            if not ok:
+            if not ok or pe not in fq:
                 continue
-            pairs_nonus.append((tot, nonus[pe]))
-            pairs_us.append((tot, us[pe]))
+            series[fq[pe]] = (tot, nonus[pe], us[pe])
 
-        for name, pairs in (("Deere NON-US revenue", pairs_nonus),
-                            ("Deere US revenue", pairs_us)):
-            if len(pairs) < 3:
-                lines.append("%-42s vs %-22s  n=%d  (too few)" % (label, name, len(pairs)))
+        keys = sorted(series)
+        for idx, name in ((1, "Deere NON-US revenue"), (2, "Deere US revenue")):
+            if len(keys) < 3:
+                lines.append("%-42s vs %-22s  n=%d  (too few)" % (label, name, len(keys)))
                 continue
-            xs = [p[0] for p in pairs]
-            ys = [p[1] for p in pairs]
+            xs = [series[k][0] for k in keys]
+            ys = [series[k][idx] for k in keys]
             r, n = pearson(xs, ys)
-            # first difference (year-on-year would need 4 lags; use level + diff)
+            # q/q first difference, in sequence order
             dx = [xs[i] - xs[i - 1] for i in range(1, len(xs))]
             dy = [ys[i] - ys[i - 1] for i in range(1, len(ys))]
             rd, nd = pearson(dx, dy)
-            lines.append("%-42s vs %-22s  n=%2d  r(level)=%s  r(diff)=%s"
+            # YEAR-ON-YEAR growth, matched on the same fiscal quarter one year
+            # earlier. Both series are strongly seasonal (planting and harvest
+            # drive shipments and exports in the same months), so r on raw levels
+            # and on q/q differences mostly measures a shared seasonal shape, not
+            # shared information. This is the only one of the three worth acting on.
+            yx, yy = [], []
+            for (fyr, q) in keys:
+                prev = (fyr - 1, q)
+                if prev in series and series[prev][0] and series[prev][idx]:
+                    yx.append(series[(fyr, q)][0] / series[prev][0] - 1)
+                    yy.append(series[(fyr, q)][idx] / series[prev][idx] - 1)
+            ry, ny = pearson(yx, yy)
+            lines.append("%-42s vs %-22s  n=%2d  r(level)=%s  r(qoq)=%s  r(YoY)=%s [n=%d]"
                          % (label, name, n,
                             "%+.3f" % r if r is not None else "  n/a",
-                            "%+.3f" % rd if rd is not None else "  n/a"))
+                            "%+.3f" % rd if rd is not None else "  n/a",
+                            "%+.3f" % ry if ry is not None else "  n/a", ny))
         lines.append("")
 
     txt = "\n".join(lines)

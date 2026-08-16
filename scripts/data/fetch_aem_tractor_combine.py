@@ -243,7 +243,10 @@ def parse_table(text):
 
 def observations_from_pdf(path, url, wayback_ts):
     text = pdf_text(path)
-    if "Farm Tractors" not in text:
+    # modern reports say "Total Farm Tractors"; the pre-2011 Flash Reports say
+    # "TOTAL FARM / WHEEL TRACTORS" across two lines.
+    low = text.lower()
+    if "farm tractors" not in low and "wheel tractors" not in low:
         return []
     mon, yr = parse_header_period(text, os.path.basename(path))
     y_cur, y_prev = parse_years(text)
@@ -298,8 +301,10 @@ def main():
     jobs = [(u, ts) for u, ts in wb]
     for u in LIVE_EXTRA:
         jobs.append((u, None))
-    # live aem.org direct paths (2021-2025 era naming)
-    for y in range(2021, 2027):
+    # Live aem.org direct paths. Wayback already holds everything up to
+    # 2025, so only the current year is worth guessing here -- probing the
+    # whole 2021-2026 grid costs ~140 dead requests for no extra data.
+    for y in (2026,):
         for m in range(1, 13):
             jobs.append(("https://www.aem.org/AEM/media/docs/Statistics/"
                          "US-Month-Ag-Report-%d-%d.pdf" % (m, y), None))

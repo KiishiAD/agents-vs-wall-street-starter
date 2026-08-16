@@ -1,0 +1,28 @@
+{
+  "_comment": "Working forecast state. Metric labels must match challenge/companies.json exactly. Deere carries the researched central case; the other three are unresearched and deliberately left null so validation surfaces them rather than hiding a placeholder.",
+
+  "DE": {
+    "_basis": "Bottom-up 24-cell regional build, cross-checked against guidance arithmetic and 12y seasonality. See dossier/deere/report.html",
+    "Worldwide net sales and revenues": 12350,
+    "Diluted EPS (GAAP)": 4.55,
+    "Production & Precision Ag operating profit": 450
+  },
+
+  "HD": {
+    "Net sales": null,
+    "Adjusted diluted EPS": null,
+    "Comparable sales, total company": null
+  },
+
+  "ADI": {
+    "Revenue": null,
+    "Adjusted diluted EPS": null,
+    "Adjusted gross margin": null
+  },
+
+  "HAS": {
+    "Net fees": null,
+    "Pre-exceptional basic EPS": null,
+    "Pre-exceptional operating profit": null
+  }
+}
