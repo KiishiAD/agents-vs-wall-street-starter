@@ -1,0 +1,2 @@
+# Workbook rendering and round-trip validation.
+openpyxl>=3.1,<4

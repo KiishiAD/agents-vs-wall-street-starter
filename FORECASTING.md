@@ -15,6 +15,13 @@ python3 -m forecasting.cli \
   --receipt receipts/HD.json
 ```
 
+For a complete all-company, workbook-producing run, place `HD.json`, `ADI.json`,
+`HAS.json`, and `DE.json` in `handoffs/` and run:
+
+```bash
+python3 -m pipeline.run --handoff-dir handoffs
+```
+
 ## Input contract
 
 The compact signal output remains the centre of the input: `metrics`,

@@ -93,13 +93,18 @@ def main() -> None:
     parser.add_argument("--parallel-companies", type=int, default=4, choices=range(1, 5))
     parser.add_argument("--through", choices=STAGE_ORDER, default="workbooks")
     parser.add_argument("--skip-research", action="store_true", help="Reuse existing signals/*/latest.json")
+    parser.add_argument(
+        "--handoff-dir",
+        help="Directory containing source-frozen signal_handoff.v1 files named <company>.json. "
+        "When supplied, it replaces live research and the legacy forecast-input stage.",
+    )
     args = parser.parse_args()
 
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     log = RunLog(ROOT / "logs" / f"pipeline-{run_id}.log")
     log.write(f"START run_id={run_id} companies={','.join(args.companies)} model={args.model} effort={args.reasoning_effort}")
     try:
-        if not args.skip_research and not os.environ.get("OPENAI_API_KEY"):
+        if not args.handoff_dir and not args.skip_research and not os.environ.get("OPENAI_API_KEY"):
             raise PipelineError("OPENAI_API_KEY is not set")
         if STAGE_ORDER.index(args.through) >= STAGE_ORDER.index("forecasts"):
             ensure_module("forecasting.cli", "forecasting stage")
@@ -108,7 +113,14 @@ def main() -> None:
 
         def run_company(company: str) -> None:
             log.write(f"COMPANY {company} START")
-            if not args.skip_research:
+            if args.handoff_dir:
+                handoff_path = Path(args.handoff_dir) / f"{company}.json"
+                if not handoff_path.is_file():
+                    raise PipelineError(f"Missing frozen signal handoff {handoff_path}")
+                if args.through in {"signals", "inputs"}:
+                    log.write(f"COMPANY {company} COMPLETE through={args.through} handoff=validated-input")
+                    return
+            elif not args.skip_research:
                 run_command(
                     [
                         sys.executable, "-m", "signal_agent.cli", "--company", company,
@@ -119,20 +131,26 @@ def main() -> None:
             if args.through == "signals":
                 log.write(f"COMPANY {company} COMPLETE through=signals")
                 return
-            run_command(
-                [sys.executable, "-m", "signal_agent.forecast_input", "--company", company],
-                log,
-            )
+            if not args.handoff_dir:
+                run_command(
+                    [sys.executable, "-m", "signal_agent.forecast_input", "--company", company],
+                    log,
+                )
             if args.through == "inputs":
                 log.write(f"COMPANY {company} COMPLETE through=inputs")
                 return
             forecast_path = ROOT / "forecasts" / f"{company}.json"
+            forecast_input = (
+                Path(args.handoff_dir) / f"{company}.json"
+                if args.handoff_dir else ROOT / "forecast_inputs" / f"{company}.json"
+            )
             run_command(
                 [
                     sys.executable, "-m", "forecasting.cli",
-                    "--company", company,
-                    "--input", str(ROOT / "forecast_inputs" / f"{company}.json"),
+                    "--company", company, "--input", str(forecast_input),
                     "--output", str(forecast_path),
+                    "--receipt", str(ROOT / "receipts" / f"{company}.json"),
+                    "--repository-root", str(ROOT),
                 ],
                 log,
             )
