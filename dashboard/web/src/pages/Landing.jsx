@@ -108,12 +108,13 @@ export default function Landing() {
       {/* PROCESS */}
       <section id="process" className="border-t py-12">
         <div className="mx-auto max-w-[1080px] px-6">
-          <SecHead eyebrow="How it works" title="Profile → signals → collect → ground-check → reconcile">
-            An orchestrator runs one identical worker per company, in parallel. Inside each worker, the work fans out to
-            a collection agent per signal — and every agent's reasoning is checked before its number can count.
+          <SecHead eyebrow="How it works" title="Initialiser → signal extractor → analyst → consensus">
+            One initialiser per company, run in parallel. It deep-researches a source-backed profile and requests the
+            signals; the signal extractor fans out sub-agents per signal and drops any that aren't grounded; the analyst
+            reviews the survivors and agrees a consensus figure.
           </SecHead>
 
-          {/* orchestrator strip */}
+          {/* initialiser strip */}
           <Reveal className="mb-8 flex flex-wrap items-center justify-center gap-2.5 text-sm">
             <span className="rounded-full bg-primary px-4 py-1.5 font-medium text-primary-foreground">Initialiser agent</span>
             <ArrowRight className="size-4 text-muted-foreground" />
@@ -133,11 +134,11 @@ export default function Landing() {
           {/* grounding callout */}
           <Reveal className="mt-6 rounded-xl bg-primary/5 p-4 ring-1 ring-primary/15">
             <p className="text-[13.5px] leading-relaxed text-foreground/80">
-              <b className="font-heading font-medium">The evidence-grounding check.</b> For every signal, sub-agents extract
-              the numbers from the frozen, hash-verified corpus, returning a value with a confidence. A <em className="not-italic font-medium">reasoning
-              inspector</em> then reads each one and rejects any agent that answered from trained knowledge instead of the
-              evidence it actually extracted. Only grounded signals reach the reconciliation agent, whose report is written back
-              to the signal and combined into a final result by consensus.
+              <b className="font-heading font-medium">The evidence-grounding check.</b> For every signal, sub-agents
+              web-search for the evidence (Tavily) and extract the number from the frozen, hash-verified corpus, returning a
+              value with a confidence. A <em className="not-italic font-medium">reasoning inspector</em> then reads each one
+              and rejects any agent that answered from trained knowledge instead of the evidence it actually read. Only
+              grounded signals reach the reconciliation agent, whose report is written back to the signal.
             </p>
           </Reveal>
         </div>

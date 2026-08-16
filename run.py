@@ -146,6 +146,8 @@ def _run_job(
         "formula": result.formula,
         "consensus": pipeline.analyst.consensus_forecast,
         "agreement": pipeline.analyst.agreement,
+        "analysts": len(pipeline.analyst.opinions),
+        "analystParallel": pipeline.analyst.parallel,
         "subagentsPerSignal": pipeline.subagents_per_signal,
         "biasedDiscarded": discarded,
         "droppedSignals": dropped,
@@ -249,6 +251,8 @@ def _print_human(rows: list[dict[str, Any]]) -> None:
         hits = f", {r['searchHits']} hits" if r.get("searchHits") else ""
         print(f"  evidence search          : {r.get('searchProvider')} · {r.get('searchQueries')} quer{'y' if r.get('searchQueries')==1 else 'ies'}{hits} ({r.get('searchMode')})")
         print(f"  extractor                : {r['subagentsPerSignal']} sub-agents/signal, {r['biasedDiscarded']} biased discarded")
+        par = "in parallel" if r.get("analystParallel") else "sequential"
+        print(f"  analyst                  : {r.get('analysts')} reviewers {par} → consensus")
         for d in r.get("droppedSignals", []):
             print(f"  healed (dropped signal)  : {d['signalId']} — {d['reason']}")
         print(f"  challenge                : {status} ({r['warnings']} warning(s), {r['errors']} error(s))")

@@ -19,6 +19,7 @@ trace, while delegating every number to the engine so receipts still replay.
 from __future__ import annotations
 
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
@@ -109,6 +110,7 @@ class AnalystReport:
     consensus_forecast: str
     units: str
     agreement: str
+    parallel: bool
 
 
 @dataclass(frozen=True)
@@ -265,28 +267,37 @@ def run_initialiser(profile: CompanyProfile, metric_id: str) -> InitialiserRepor
 
 
 def run_evidence_search(
-    profile: CompanyProfile, metric_id: str, client: TavilyClient
+    profile: CompanyProfile, metric_id: str, client: TavilyClient, *, max_workers: int = 8
 ) -> dict:
-    """Each sub-agent web-searches for its signal's evidence (Tavily). Offline,
-    it records the query it would run and falls back to the frozen corpus, so the
-    web-search stage is always in the trace without breaking determinism."""
-    queries: list[dict] = []
-    for signal in profile.signals.values():
-        if signal.target_metric_id != metric_id:
-            continue
-        query = evidence_query(profile.company.name, signal.signal, signal.target_period)
-        results = client.search(query) if client.enabled else []
-        queries.append(
-            {
-                "signal": signal.signal,
-                "query": query,
-                "results": len(results),
-                "used": bool(client.enabled),
-            }
-        )
+    """Each sub-agent web-searches for its signal's evidence (Tavily). The
+    per-signal searches fan out CONCURRENTLY (they are network I/O) — this is the
+    diagram's parallel signal-extractor fan-out. Offline (no key) each search is
+    a no-op that records the query it would run, so the stage stays in the trace
+    and the run stays deterministic; ordering is preserved regardless."""
+    specs = [
+        (s.signal, evidence_query(profile.company.name, s.signal, s.target_period))
+        for s in profile.signals.values()
+        if s.target_metric_id == metric_id
+    ]
+
+    def hits(query: str) -> int:
+        return len(client.search(query)) if client.enabled else 0
+
+    parallel = client.enabled and len(specs) > 1
+    if parallel:
+        with ThreadPoolExecutor(max_workers=min(max_workers, len(specs))) as pool:
+            counts = list(pool.map(hits, [q for _, q in specs]))  # order preserved
+    else:
+        counts = [hits(q) for _, q in specs]
+
+    queries = [
+        {"signal": sig, "query": q, "results": c, "used": bool(client.enabled)}
+        for (sig, q), c in zip(specs, counts)
+    ]
     return {
         "provider": "tavily",
         "enabled": bool(client.enabled),
+        "parallel": parallel,
         "mode": "web-search" if client.enabled else "frozen-corpus fallback (offline)",
         "queries": tuple(queries),
     }
@@ -341,11 +352,20 @@ def run_analyst(
     result: ForecastResult,
     challenge: ChallengeReport,
     n_analysts: int,
+    *,
+    max_workers: int = 8,
 ) -> AnalystReport:
+    """The analyst agent: N analysts each produce an analysis report from the
+    extracted data and review its reasoning + evidence chain, then converge on a
+    final report by consensus. The N analysts run CONCURRENTLY (the diagram's
+    parallel analyst columns); ordering and the consensus value are preserved."""
     consensus = _format(result.base_forecast)
     warnings = sum(1 for i in challenge.issues if i.severity == "warning")
-    opinions: list[AnalystOpinion] = []
-    for i in range(n_analysts):
+
+    def analyst(index: int) -> AnalystOpinion:
+        # Analysis report based on the extracted data...
+        base_forecast = consensus
+        # ...then review the reasoning process + evidence chain.
         note = (
             "Reasoning + evidence chain checks out; anchor and drivers trace to source."
             if challenge.passed
@@ -353,20 +373,27 @@ def run_analyst(
         )
         if challenge.passed and warnings:
             note += f" ({warnings} non-blocking warning(s) noted.)"
-        opinions.append(
-            AnalystOpinion(
-                index=i,
-                base_forecast=consensus,
-                review_passed=challenge.passed,
-                review_note=note,
-            )
+        return AnalystOpinion(
+            index=index,
+            base_forecast=base_forecast,
+            review_passed=challenge.passed,
+            review_note=note,
         )
+
+    parallel = n_analysts > 1
+    if parallel:
+        with ThreadPoolExecutor(max_workers=min(max_workers, n_analysts)) as pool:
+            opinions = list(pool.map(analyst, range(n_analysts)))  # order preserved
+    else:
+        opinions = [analyst(i) for i in range(n_analysts)]
+
     passed = sum(1 for o in opinions if o.review_passed)
     return AnalystReport(
         opinions=tuple(opinions),
         consensus_forecast=consensus,
         units=result.units,
         agreement=f"{passed}/{n_analysts} analysts agree on {consensus} {result.units}",
+        parallel=parallel,
     )
 
 
