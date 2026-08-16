@@ -18,6 +18,16 @@
       "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000354950&type=8-K&dateb=&owner=include&count=40",
       "localPath": "challenge/offline-data/home-depot/filings/2026-05-19__hd-us-20260519-q1-8k__1038584.md",
       "sha256": "5129520a93469aaddef1ebb3c84038401b710eb96b04be2a3aa86aa2614ae2fd"
+    },
+    {
+      "id": "hd-fy2025q2-earnings-release",
+      "publisher": "The Home Depot, Inc.",
+      "title": "The Home Depot Announces Second Quarter Fiscal 2025 Results; Reaffirms Fiscal 2025 Guidance",
+      "documentType": "SEC_filed_earnings_release",
+      "publishedAt": "2025-08-19",
+      "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=0000354950&type=8-K&dateb=&owner=include&count=40",
+      "localPath": "challenge/offline-data/home-depot/filings/2025-08-19__hd-us-20250819-q2-8k__143666.md",
+      "sha256": "5ec7076b61d5f1109e4a4e7bb12d8417df332bd8db7ff42f3c2545852d1bfbc4"
     }
   ],
   "profile": {
@@ -102,10 +112,10 @@
   "signalMap": [
     {
       "id": "hd_net_sales_anchor",
-      "signal": "Most recent reported quarterly net sales (proxy anchor)",
+      "signal": "Prior-year same-quarter reported net sales (seasonal proxy anchor)",
       "targetMetric": "HD_NET_SALES_FY2026Q2",
       "role": "anchor",
-      "hypothesis": "Home Depot does not issue explicit quarterly net-sales guidance, so the most recent reported quarter (Q1 fiscal 2026 net sales of $41.8bn / $41,765m) is used as a proxy starting range for the next fiscal quarter, consistent with reaffirmed full-year sales growth of approximately 2.5% to 4.5%.",
+      "hypothesis": "Home Depot does not issue explicit quarterly net-sales guidance, and Q2 (quarter ending in early August) is its seasonal peak, materially above Q1. The most period-aligned defensible anchor is therefore the prior-year same quarter actual: Q2 fiscal 2025 (three months ended August 3, 2025) reported net sales of $45,277m. This is used as a seasonal proxy starting range for FY2026Q2, consistent with reaffirmed low-single-digit full-year sales growth; it is an explicitly seasonal proxy, not issued guidance for the period.",
       "expectedDirection": "range",
       "targetPeriod": "FY2026Q2",
       "units": "USDm",
@@ -119,10 +129,10 @@
     },
     {
       "id": "hd_adj_eps_anchor",
-      "signal": "Most recent reported adjusted diluted EPS (proxy anchor)",
+      "signal": "Prior-year same-quarter reported adjusted diluted EPS (seasonal proxy anchor)",
       "targetMetric": "HD_ADJ_EPS_FY2026Q2",
       "role": "anchor",
-      "hypothesis": "No explicit quarterly EPS guidance is given, so the most recent reported adjusted diluted EPS (Q1 fiscal 2026 of $3.43) is used as a proxy starting range for the next fiscal quarter, consistent with reaffirmed full-year adjusted diluted EPS growth of approximately flat to 4.0%.",
+      "hypothesis": "No explicit quarterly EPS guidance is given, and Q2 is Home Depot's seasonal peak, so the most period-aligned defensible anchor is the prior-year same quarter actual: Q2 fiscal 2025 (three months ended August 3, 2025) adjusted diluted EPS of $4.68. This is used as a seasonal proxy starting range for FY2026Q2; it is an explicitly seasonal proxy, not issued guidance for the period.",
       "expectedDirection": "range",
       "targetPeriod": "FY2026Q2",
       "units": "USD / share",
