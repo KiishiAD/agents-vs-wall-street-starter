@@ -14,6 +14,7 @@ import {
   runFile,
   runLogFile,
   profileFile,
+  traceFile,
 } from "./paths.js";
 
 // ---------- low-level helpers ----------
@@ -97,6 +98,8 @@ export const getCompany = (slug) => readJson(companyFile(slug));
 export const getForecast = (slug) => readJson(forecastFile(slug));
 // Source-backed research profile (cited claims, metrics, signal map). Optional.
 export const getProfile = (slug) => readJson(profileFile(slug));
+// Forecast decision trace / engine receipt (build-up, decisions, provenance). Optional.
+export const getTrace = (slug) => readJson(traceFile(slug));
 
 export async function getSignals(slug) {
   const ids = await listJson(signalsDir(slug));
@@ -129,14 +132,15 @@ export const getRunLog = (slug, id) => readLog(runLogFile(slug, id));
 export async function getCompanyBundle(slug) {
   const company = await getCompany(slug);
   if (!company) return null;
-  const [forecast, signals, agents, runs, profile] = await Promise.all([
+  const [forecast, signals, agents, runs, profile, trace] = await Promise.all([
     getForecast(slug),
     getSignals(slug),
     getAgents(slug),
     getRuns(slug),
     getProfile(slug),
+    getTrace(slug),
   ]);
-  return { company, forecast, signals, agents, runs, profile };
+  return { company, forecast, signals, agents, runs, profile, trace };
 }
 
 export async function listCompanies() {
@@ -176,4 +180,5 @@ export {
   runFile,
   runLogFile,
   profileFile,
+  traceFile,
 };

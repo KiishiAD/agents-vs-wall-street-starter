@@ -1,0 +1,175 @@
+{
+  "schemaVersion": "1.0",
+  "company": {
+    "id": "HAS",
+    "name": "Hays plc",
+    "ticker": "HAS",
+    "currency": "GBP",
+    "fiscalCalendar": "Hays reports on a 30 June fiscal year-end; FY2026 is the financial year ended 30 June 2026, with quarterly trading updates and half-year results in February."
+  },
+  "informationCutoff": "2026-08-16T17:15:00+01:00",
+  "sources": [
+    {
+      "id": "has-q4-fy2026-trading-update",
+      "publisher": "Hays plc",
+      "title": "Quarterly Trading Update for the Three Months Ended 30 June 2026",
+      "documentType": "regulatory_trading_update",
+      "publishedAt": "2026-07-10",
+      "url": "https://www.londonstockexchange.com/news-article/HAS/quarterly-trading-update/1572805",
+      "localPath": "challenge/offline-data/hays/filings/2026-07-10__has-ln-20260710-q4-8k__1572805.md",
+      "sha256": "8aefc0568abfe4d357c3c1432c8343ba998975909d5efed3fe080d50dcf351a7"
+    },
+    {
+      "id": "has-fy2025-preliminary-results",
+      "publisher": "Hays plc",
+      "title": "Preliminary Results for the Year Ended 30 June 2025",
+      "documentType": "preliminary_results_announcement",
+      "publishedAt": "2025-08-21",
+      "url": "https://www.londonstockexchange.com/news-article/HAS/full-year-financial-results/143845",
+      "localPath": "challenge/offline-data/hays/filings/2025-08-21__has-ln-20250821-filing__143845.md",
+      "sha256": "6866b6719a65e2b001c8bcd4f0d8004fa64708157e3e2fec599ea87b4b41a86b"
+    },
+    {
+      "id": "has-h1-fy2026-half-year-report",
+      "publisher": "Hays plc",
+      "title": "Half-Year Report for the Six Months Ended 31 December 2025",
+      "documentType": "half_year_report",
+      "publishedAt": "2026-02-27",
+      "url": "https://www.londonstockexchange.com/news-article/HAS/half-year-report/642921",
+      "localPath": "challenge/offline-data/hays/filings/2026-02-27__has-ln-20260227-h1-8k__642921.md",
+      "sha256": "aaf55039f0e11baa99c0a380a55b0ce886e43c200fab7fca62dab094ce36a5ad"
+    }
+  ],
+  "profile": {
+    "businessModel": [
+      {
+        "claim": "Hays is a specialist recruitment company that places candidates into permanent jobs and temporary/contract assignments, earning net fees (gross profit) on those placements across a global network of offices.",
+        "sourceIds": ["has-q4-fy2026-trading-update", "has-fy2025-preliminary-results"]
+      }
+    ],
+    "productsAndCustomers": [
+      {
+        "claim": "Hays serves employers and candidates through Permanent placement and Temp & Contracting recruitment, with its four largest specialisms being Technology, Accountancy & Finance, Engineering and Construction & Property, and a large Enterprise Solutions business for major clients.",
+        "sourceIds": ["has-q4-fy2026-trading-update"]
+      }
+    ],
+    "segmentsAndGeographies": [
+      {
+        "claim": "Hays reports net fees across four regional segments: Germany, United Kingdom & Ireland (UK&I), Australia & New Zealand (ANZ) and Rest of World (RoW); as at 30 June 2026 it had c.8,100 employees in 155 offices in 23 countries and is refocusing on 16 core countries.",
+        "sourceIds": ["has-q4-fy2026-trading-update"]
+      }
+    ],
+    "fiscalCalendar": [
+      {
+        "claim": "Hays' financial year ends 30 June; FY2026 is the year ended 30 June 2026, with full-year results scheduled for 20 August 2026 and quarterly trading updates in October, January, April and July.",
+        "sourceIds": ["has-q4-fy2026-trading-update"]
+      }
+    ],
+    "revenueAndCostDrivers": [
+      {
+        "claim": "Net fees are driven by placement volumes, average fees/mix and, in Temp & Contracting, average hours worked; profit is driven by net fee levels, consultant productivity, consultant and non-consultant headcount and structural cost savings (c.£50m per annum secured in FY26).",
+        "sourceIds": ["has-q4-fy2026-trading-update", "has-h1-fy2026-half-year-report"]
+      }
+    ],
+    "accountingDefinitions": [
+      {
+        "claim": "Hays presents results on a pre-exceptional basis (excluding restructuring, impairment and transformation charges) and separately reports pre-exceptional operating profit and pre-exceptional basic EPS; net fees are turnover less the cost of sales (i.e. gross profit).",
+        "sourceIds": ["has-fy2025-preliminary-results", "has-h1-fy2026-half-year-report"]
+      }
+    ],
+    "guidanceStyle": [
+      {
+        "claim": "Hays references company-compiled analyst consensus for its key profit metric and frames outlook against that range; for FY26 it stated pre-exceptional operating profit will be at the top of the £37.0-46.0m consensus range (company-compiled consensus of £43.5m based on 10 analysts).",
+        "sourceIds": ["has-q4-fy2026-trading-update"]
+      }
+    ],
+    "cyclicalityAndSeasonality": [
+      {
+        "claim": "Recruitment net fees are highly cyclical and sensitive to labour-market conditions, with Temp & Contracting more resilient than Permanent through downturns; Hays expects near-term market conditions to remain challenging with greater resilience in Temp & Contracting than in Perm.",
+        "sourceIds": ["has-q4-fy2026-trading-update"]
+      }
+    ],
+    "externalExposures": [
+      {
+        "claim": "Hays is exposed to heightened global macro-economic uncertainty and to currency movements versus sterling (notably the Euro and Australian Dollar), which materially affect reported net fees and operating profit.",
+        "sourceIds": ["has-q4-fy2026-trading-update", "has-h1-fy2026-half-year-report"]
+      }
+    ]
+  },
+  "metrics": [
+    {
+      "id": "HAS_NET_FEES_FY2026",
+      "name": "Net fees",
+      "units": "GBPm",
+      "targetPeriod": "FY2026",
+      "accountingBasis": "reported"
+    },
+    {
+      "id": "HAS_PREEXC_BASIC_EPS_FY2026",
+      "name": "Pre-exceptional basic EPS",
+      "units": "GBp",
+      "targetPeriod": "FY2026",
+      "accountingBasis": "pre-exceptional"
+    },
+    {
+      "id": "HAS_PREEXC_OP_PROFIT_FY2026",
+      "name": "Pre-exceptional operating profit",
+      "units": "GBPm",
+      "targetPeriod": "FY2026",
+      "accountingBasis": "pre-exceptional"
+    }
+  ],
+  "signalMap": [
+    {
+      "id": "has_net_fees_anchor",
+      "signal": "Most recent reported full-year net fees as FY2026 starting range",
+      "targetMetric": "HAS_NET_FEES_FY2026",
+      "role": "anchor",
+      "hypothesis": "The last reported full-year net fees figure (£972.4m for FY2025), adjusted downward for the FY2026 like-for-like decline reported through Q4, is the strongest defensible starting range for FY2026 net fees pending the 20 August 2026 full-year results.",
+      "expectedDirection": "range",
+      "targetPeriod": "FY2026",
+      "units": "GBPm",
+      "importance": "primary",
+      "resolver": "extract_management_guidance",
+      "evidenceRequired": ["latest reported full-year net fees", "FY2026 year-to-date net fee growth"],
+      "combinationMethod": "forecast_starting_range",
+      "freshnessRequirement": "latest available reported figure before cutoff",
+      "correlationGroup": "management_guidance",
+      "status": "pending"
+    },
+    {
+      "id": "has_preexc_eps_anchor",
+      "signal": "Most recent reported full-year pre-exceptional basic EPS as FY2026 starting range",
+      "targetMetric": "HAS_PREEXC_BASIC_EPS_FY2026",
+      "role": "anchor",
+      "hypothesis": "The last reported full-year pre-exceptional basic EPS (1.31p for FY2025) is the strongest defensible starting range for FY2026, consistent with FY2026 pre-exceptional operating profit guided broadly in line with to modestly above FY2025.",
+      "expectedDirection": "range",
+      "targetPeriod": "FY2026",
+      "units": "GBp",
+      "importance": "primary",
+      "resolver": "extract_management_guidance",
+      "evidenceRequired": ["latest reported full-year pre-exceptional basic EPS"],
+      "combinationMethod": "forecast_starting_range",
+      "freshnessRequirement": "latest available reported figure before cutoff",
+      "correlationGroup": "management_guidance",
+      "status": "pending"
+    },
+    {
+      "id": "has_preexc_op_profit_anchor",
+      "signal": "Management FY2026 pre-exceptional operating profit consensus guidance",
+      "targetMetric": "HAS_PREEXC_OP_PROFIT_FY2026",
+      "role": "anchor",
+      "hypothesis": "Hays' own Q4 FY2026 statement that pre-exceptional operating profit will be at the top of the company-compiled £37.0-46.0m consensus range is the strongest direct starting range for FY2026 operating profit.",
+      "expectedDirection": "range",
+      "targetPeriod": "FY2026",
+      "units": "GBPm",
+      "importance": "primary",
+      "resolver": "extract_management_guidance",
+      "evidenceRequired": ["latest company-compiled consensus range", "management outlook statement"],
+      "combinationMethod": "forecast_starting_range",
+      "freshnessRequirement": "latest available guidance before cutoff",
+      "correlationGroup": "management_guidance",
+      "status": "pending"
+    }
+  ]
+}
