@@ -7,18 +7,21 @@
     "Production & Precision Ag operating profit": 450
   },
   "HD": {
-    "Net sales": null,
-    "Adjusted diluted EPS": null,
-    "Comparable sales, total company": null
+    "_basis": "Bridge from Q2 FY2025 45,277: +1,450 GMS (non-comp to Sept 2026, seasonal peak) +200 Mingledorff's (closed 11 May, revenue undisclosed so absent from most models) +400 new stores/branches +220 comp at +0.5%. Prints 18 Aug 2026.",
+    "Net sales": 47550,
+    "Adjusted diluted EPS": 4.71,
+    "Comparable sales, total company": 0.5
   },
   "ADI": {
-    "Revenue": null,
-    "Adjusted diluted EPS": null,
-    "Adjusted gross margin": null
+    "_basis": "Company guidance 3.9bn +/- 100m is the primary anchor; ADI beat its own midpoint in 17 of 18 quarters. Capped below pure beat-extrapolation because auto demand was pulled INTO Q2 per Puccio, 2 Jun 2026. Prints 19 Aug 2026.",
+    "Revenue": 3970,
+    "Adjusted diluted EPS": 3.4,
+    "Adjusted gross margin": 72.7
   },
   "HAS": {
-    "Net fees": null,
-    "Pre-exceptional basic EPS": null,
-    "Pre-exceptional operating profit": null
+    "_basis": "FY2026 ended 30 June 2026. Benchmarked against Hays' OWN company-compiled 9-analyst consensus, updated 11 Aug 2026 - the cleanest benchmark in the challenge.",
+    "Net fees": 903.5,
+    "Pre-exceptional basic EPS": 1.14,
+    "Pre-exceptional operating profit": 46.2
   }
 }

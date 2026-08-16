@@ -35,9 +35,18 @@ ROOT = Path(__file__).resolve().parent.parent
 COMPANIES = ROOT / "challenge" / "companies.json"
 PRIORS = ROOT / "evaluation" / "priors.json"
 
-# how far from the prior-year actual a forecast may sit before we complain
-SCALE_WARN = 0.25   # +/-25% -> warn
-SCALE_FAIL = 0.60   # +/-60% -> error
+# How far from the prior-year actual a forecast may sit before we complain.
+# The FAIL threshold hunts SCALE ERRORS (10x, 1000x), not large-but-real moves.
+# It was originally 0.60 and produced a false positive on ADI, whose EPS is
+# legitimately +66% coming out of a semiconductor downcycle. A genuine unit slip
+# is an order of magnitude out, so 3x is the right place to draw the line.
+SCALE_WARN = 0.25   # +/-25%  -> warn, look at it
+SCALE_FAIL = 2.00   # +/-200% -> error, almost certainly a scale slip
+
+# Below this ratio to the prior, a percentage figure is a fraction (0.005 for 0.5%)
+# rather than a small-but-real value (+0.5% against a prior of +1.0%).
+FRACTION_RATIO = 0.02
+FRACTION_ABS = 0.10  # a percentage-point figure below this is a fraction error
 
 ERR, WARN, OK = "ERROR", "warn", "ok"
 
@@ -67,14 +76,26 @@ def is_eps(units: str) -> bool:
     return "share" in u or u == "gbp"
 
 
-def check_units(f: Findings, where: str, value: float, units: str, label: str) -> None:
+def check_units(f: Findings, where: str, value: float, units: str, label: str, prior=None) -> None:
     """The single highest-yield check. Percentage and per-share scale errors are
-    silent to the organisers' checker and cost a full 5.0."""
+    silent to the organisers' checker and cost a full 5.0.
+
+    The fraction test is PRIOR-AWARE. A flat |value| < 1 rule wrongly rejected
+    Home Depot's +0.5% comparable sales, which is a perfectly ordinary reading
+    against a prior of +1.0%. A real fraction error is ~100x too small, so we
+    compare against the prior where one exists."""
     if is_pct(units):
-        if abs(value) < 1.0 and value != 0:
-            f.add(ERR, where, f"{label}: {value} looks like a FRACTION. "
-                              f"Percentages go in as points — 4.5 means 4.5%, not 0.045.")
-        elif abs(value) > 100:
+        if value != 0:
+            if abs(value) < FRACTION_ABS:
+                # A percentage-point figure below 0.1 is essentially always a fraction
+                # error. Genuine sub-0.1pp readings round to 0.1 in practice.
+                f.add(ERR, where, f"{label}: {value} is below {FRACTION_ABS} percentage points. "
+                                  f"Almost certainly a FRACTION — percentages go in as points: "
+                                  f"4.5 means 4.5%, not 0.045.")
+            elif prior not in (None, 0) and abs(value / prior) < FRACTION_RATIO:
+                f.add(ERR, where, f"{label}: {value} is {abs(prior/value):.0f}x smaller than the "
+                                  f"prior-year {prior}. Looks like a FRACTION.")
+        if abs(value) > 100:
             f.add(ERR, where, f"{label}: {value} looks like BASIS POINTS or a "
                               f"mis-scaled percentage. Expected roughly -50..100.")
     elif is_eps(units):
@@ -159,7 +180,7 @@ def main(argv: list[str]) -> int:
                 continue
             seen += 1
             vals[label] = float(v)
-            check_units(f, where, float(v), units, label)
+            check_units(f, where, float(v), units, label, cp.get(label))
             check_scale(f, where, float(v), cp.get(label), label)
             check_sign(f, where, float(v), units, label, allow_neg=is_pct(units))
         check_coherence(f, t, vals, cp)
