@@ -15,6 +15,9 @@
     "test:signals": "python3 -m unittest discover -s tests -p 'test_signal_*.py'",
     "signal:reports": "python3 -m signal_agent.cli --signal financial_reports",
     "signal:forecast-input": "python3 -m signal_agent.forecast_input",
+    "research:profiles": "python3 -m signal_agent.company_research --stage profile",
+    "research:signals": "python3 -m signal_agent.company_research --stage signals",
+    "test:research": "python3 -m unittest discover -s tests -p 'test_*research*.py'",
     "pipeline": "python3 -m pipeline.run"
   },
   "dependencies": {

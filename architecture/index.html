@@ -99,168 +99,168 @@
   <main>
     <header>
       <p class="eyebrow">Agents vs Wall Street · System design</p>
-      <h1>Parallel research.<br>Disciplined forecasts.</h1>
-      <p class="lede">One reusable forecasting agent runs as four isolated instances in parallel. Company-specific prompts and configuration specialise each run, while a deterministic control layer validates every number and writes the official forecast workbooks.</p>
+      <h1>Evidence first.<br>Arithmetic last.</h1>
+      <p class="lede">A bounded Tavily pipeline researches four companies in parallel, freezes admissible sources, and lets models propose claims. Deterministic gates decide what may reach the Decimal forecast compiler.</p>
       <div class="chips" aria-label="Architecture qualities">
         <span class="chip">Parallel execution</span>
-        <span class="chip">Company-specific prompts</span>
-        <span class="chip">Structured outputs</span>
-        <span class="chip">Cited evidence</span>
+        <span class="chip">Frozen evidence</span>
+        <span class="chip">Cutoff enforced</span>
+        <span class="chip">Exact quotations</span>
         <span class="chip">Deterministic arithmetic</span>
-        <span class="chip">Reproducible run</span>
+        <span class="chip">Fail closed</span>
       </div>
     </header>
 
     <section>
       <p class="eyebrow">End-to-end flow</p>
-      <h2>One agent, four parallel instances, one quality gate</h2>
+      <h2>Discovery is separate from forecast authority</h2>
       <div class="panel">
-        <p class="caption">The model performs interpretation and financial judgement. Code owns retrieval boundaries, calculations, validation, file generation and run-state management.</p>
+        <p class="caption">Models may find passages and propose typed observations. Source records own facts, signal maps own permitted causal links, and code owns acceptance and arithmetic.</p>
         <div class="flow" role="img" aria-label="Flow from source documents through four parallel instances of one reusable forecasting agent, validation, and workbook output">
           <div class="stage">
-            <div class="node source"><strong>Challenge specification</strong><small>Exact periods, metrics, units and workbook templates</small></div>
-            <div class="node source"><strong>Frozen document corpus</strong><small>Filings, trading updates, transcripts and presentation extracts</small></div>
-            <div class="node source"><strong>Current official web sources</strong><small>Investor relations, regulators and exchanges used to verify and update frozen evidence</small></div>
-            <div class="node source"><strong>Shared policy</strong><small>Evidence, recency, citation, uncertainty and output-schema rules</small></div>
+            <div class="node source"><strong>Challenge contract</strong><small>Company, metric, period, unit, basis and cutoff</small></div>
+            <div class="node source"><strong>Company seed</strong><small>Stable IDs and preferred official domains</small></div>
+            <div class="node source"><strong>Signal map</strong><small>3–7 signals per metric; one anchor; explicit formulas</small></div>
           </div>
 
           <div class="arrow" aria-hidden="true">→</div>
 
           <div class="stage agent-grid">
-            <div class="node agent agent-core"><strong>Reusable company pipeline</strong><small>Five research workers reconcile evidence before a shared forecasting and structured-output workflow</small><span class="prompt-tag">pipeline/run.py + signal_agent/</span></div>
-            <div class="node agent"><strong>Instance 1 · Hays</strong><small>Injected configuration: net-fee bridge, regional conversion, tax and basic EPS</small><span class="prompt-tag">signal_agent/config/companies.json · HAS</span></div>
-            <div class="node agent"><strong>Instance 2 · Home Depot</strong><small>Injected configuration: sales bridge, comparable sales and adjusted diluted EPS</small><span class="prompt-tag">signal_agent/config/companies.json · HD</span></div>
-            <div class="node agent"><strong>Instance 3 · Analog Devices</strong><small>Injected configuration: revenue, adjusted gross margin and adjusted diluted EPS</small><span class="prompt-tag">signal_agent/config/companies.json · ADI</span></div>
-            <div class="node agent"><strong>Instance 4 · Deere</strong><small>Injected configuration: revenue, GAAP diluted EPS and segment operating profit</small><span class="prompt-tag">signal_agent/config/companies.json · DE</span></div>
+            <div class="node agent agent-core"><strong>Bounded Tavily research</strong><small>Nine profile queries first; approved-signal-only queries second</small><span class="prompt-tag">signal_agent/company_research.py</span></div>
+            <div class="node agent"><strong>HAS lane</strong><small>Independent candidate bundle and failures</small></div>
+            <div class="node agent"><strong>HD lane</strong><small>Independent candidate bundle and failures</small></div>
+            <div class="node agent"><strong>ADI lane</strong><small>Independent candidate bundle and failures</small></div>
+            <div class="node agent"><strong>DE lane</strong><small>Independent candidate bundle and failures</small></div>
           </div>
 
           <div class="arrow" aria-hidden="true">→</div>
 
           <div class="stage">
-            <div class="node guard"><strong>Schema gate</strong><small>Require exactly three numeric forecast figures for each company</small></div>
-            <div class="node guard"><strong>Financial reconciliation</strong><small>Recalculate bridges, margins, tax, EPS and unit conversions</small></div>
-            <div class="node output"><strong>Workbook generator</strong><small>Fill only forecast cells; preserve labels, units and sheet structure</small></div>
+            <div class="node guard"><strong>Freeze + provenance</strong><small>URL, time, bytes, SHA-256, quote and cutoff</small></div>
+            <div class="node guard"><strong>No-web review</strong><small>Unsupported knowledge and suspected look-ahead</small></div>
+            <div class="node output"><strong>Decimal compiler</strong><small>Anchor + accepted drivers; conditional scenarios</small></div>
           </div>
 
           <div class="rail">
-            <div><strong>Run isolation</strong>One directory per run and company</div>
-            <div><strong>Targeted retry</strong>Rerun only a failed instance</div>
-            <div><strong>Full lineage</strong>Prompts, sources and assumptions retained</div>
-            <div><strong>Final artifacts</strong>JSON, logs and four XLSX files</div>
+            <div><strong>Source authority</strong>Frozen bytes own evidence</div>
+            <div><strong>Map authority</strong>Declared formulas own causality</div>
+            <div><strong>Code authority</strong>Validation and arithmetic</div>
+            <div><strong>Model role</strong>Find and propose only</div>
           </div>
         </div>
       </div>
     </section>
 
     <section>
-      <p class="eyebrow">Inside the reusable agent</p>
-      <h2>The same six-stage loop, specialised at runtime</h2>
+      <p class="eyebrow">The six stages</p>
+      <h2>Every forecast-driving value follows one path</h2>
       <div class="grid">
-        <article class="card"><span class="number">1</span><h3>Retrieve</h3><p>Select the latest and most relevant documents for the company, period and requested metrics.</p></article>
-        <article class="card"><span class="number">2</span><h3>Extract</h3><p>Capture reported history, management guidance and operating indicators with source citations.</p></article>
-        <article class="card"><span class="number">3</span><h3>Model</h3><p>Build metric-specific bridges using deterministic formulas and explicit assumptions.</p></article>
-        <article class="card"><span class="number">4</span><h3>Stress</h3><p>Produce downside, base and upside cases; identify the variables that matter most.</p></article>
-        <article class="card"><span class="number">5</span><h3>Judge</h3><p>Use model reasoning to select the final scenario and explain conflicts or uncertainty.</p></article>
-        <article class="card"><span class="number">6</span><h3>Return</h3><p>Emit one strict result object containing forecasts, evidence, calculations and risks.</p></article>
+        <article class="card"><span class="number">1</span><h3>Profile</h3><p>Cover business, products, segments, calendar, drivers, accounting, guidance, seasonality and exposures.</p></article>
+        <article class="card"><span class="number">2</span><h3>Map</h3><p>Declare material signals, evidence, direction, period, formula and correlation group.</p></article>
+        <article class="card"><span class="number">3</span><h3>Resolve</h3><p>Search only approved signals and propose exact-quote typed observations.</p></article>
+        <article class="card"><span class="number">4</span><h3>Validate</h3><p>Check hash, cutoff, quote, unit, period, basis, decimals and duplication.</p></article>
+        <article class="card"><span class="number">5</span><h3>Compile</h3><p>Calculate the base forecast and conditional scenarios with Decimal.</p></article>
+        <article class="card"><span class="number">6</span><h3>Challenge</h3><p>Reject leakage, stale evidence, false precision and unreconciled values.</p></article>
       </div>
     </section>
 
     <section>
-      <p class="eyebrow">Prompt architecture</p>
-      <h2>Shared implementation, injected company expertise</h2>
+      <p class="eyebrow">Validation contract</p>
+      <h2>Confidence never promotes a fact</h2>
       <div class="contract">
         <div class="panel">
-          <h3><code>signal_agent/prompts/financial_reports.md</code></h3>
+          <h3>Deterministic acceptance</h3>
           <ul class="checks">
-            <li>Prefer the latest guidance</li>
-            <li>Cite every material fact</li>
-            <li>Never invent missing values</li>
-            <li>Preserve requested units</li>
-            <li>Separate facts from assumptions</li>
-            <li>Return the common schema</li>
+            <li>Known, pre-cutoff publication time</li>
+            <li>Frozen bytes match SHA-256</li>
+            <li>Exact quote exists in those bytes</li>
+            <li>Signal is approved for the metric</li>
+            <li>Period, units and basis match</li>
+            <li>Numbers remain decimal strings</li>
           </ul>
         </div>
         <div class="panel">
-          <h3><code>configs/&lt;company&gt;.json</code> + <code>prompts/&lt;company&gt;.md</code></h3>
+          <h3>Automatic rejection</h3>
           <ul class="checks">
-            <li>Metric definitions</li>
-            <li>Company reporting conventions</li>
-            <li>Forecast drivers and KPIs</li>
-            <li>Required bridge calculations</li>
-            <li>Known accounting traps</li>
-            <li>Plausibility thresholds</li>
+            <li>URL or consensus without frozen proof</li>
+            <li>Missing or post-cutoff source time</li>
+            <li>Actual presented as a forecast</li>
+            <li>Arbitrary qualitative weight</li>
+            <li>Correlated driver double-count</li>
+            <li>Incomplete/error look-ahead review</li>
           </ul>
         </div>
       </div>
     </section>
 
     <section>
-      <p class="eyebrow">Agent contract</p>
-      <h2>Structured data between every stage</h2>
+      <p class="eyebrow">Forecast handoff</p>
+      <h2>Small, typed and replayable</h2>
       <div class="panel">
 <pre>{
-  "company": "HAS",
-  "period": "FY2026",
-  "forecasts": [
-    { "metric": "Net fees", "value": 904.0, "unit": "GBPm", "confidence": 0.78 }
-  ],
-  "scenarios": { "downside": {}, "base": {}, "upside": {} },
-  "assumptions": [],
-  "calculations": [],
-  "citations": [],
-  "risks": [],
-  "validation_checks": []
+  "schemaVersion": "forecast_input.v2",
+  "companyId": "ADI",
+  "profileReceipt": { "status": "accepted" },
+  "signalMapReceipt": { "status": "accepted" },
+  "observations": [{
+    "signalId": "management_guidance",
+    "value": { "low": "3800", "high": "4000" },
+    "sourceId": "src-…",
+    "exactQuote": "…"
+  }],
+  "lookaheadReview": { "status": "passed", "issues": [] },
+  "provenanceManifestSha256": "…"
 }</pre>
       </div>
     </section>
 
     <section>
       <p class="eyebrow">Quality control</p>
-      <h2>The collation layer is a gate, not a copy step</h2>
+      <h2>The handoff is a gate, not a copy step</h2>
       <div class="panel">
         <ul class="checks">
-          <li>All three requested metrics are present and numeric</li>
-          <li>Labels, units and fiscal periods match the challenge specification</li>
-          <li>Latest guidance supersedes older guidance</li>
-          <li>Forecasts reconcile to supporting calculations</li>
-          <li>Implied growth, margins and EPS fall within defensible ranges</li>
-          <li>Every important forecast assumption has supporting evidence</li>
-          <li>Only the intended workbook cells differ from the supplied templates</li>
-          <li>All four workbooks pass the repository submission checker</li>
+          <li>Every profile section has source-backed claims</li>
+          <li>Every metric has 3–7 signals and one anchor</li>
+          <li>Role, resolver and formula combinations are supported</li>
+          <li>Accepted observations reconstruct from frozen evidence</li>
+          <li>Research audit matches the canonical source manifest</li>
+          <li>Independent no-web review has passed</li>
+          <li>Modifiers stay qualitative and scenarios conditional</li>
+          <li>Rejected signals preserve the anchor or baseline</li>
         </ul>
-        <p class="warning"><strong>Fail closed:</strong> a malformed or unreconciled result is rejected and retried. It is never silently written into a submission workbook.</p>
+        <p class="warning"><strong>Fail closed:</strong> missing or invalid evidence cannot move a forecast.</p>
       </div>
     </section>
 
     <section>
       <p class="eyebrow">Reproducibility</p>
-      <h2>One command, complete evidence trail</h2>
+      <h2>Two bounded research commands</h2>
       <div class="contract">
         <div class="panel">
-          <h3>Final command</h3>
-          <p><code>python3 agent/run.py --all</code></p>
-          <p class="caption">The orchestrator launches four isolated copies of the reusable agent concurrently, injects each company configuration and prompt, validates the results, produces the workbooks and records a timestamped log.</p>
+          <h3>Profile research</h3>
+          <p><code>npm run research:profiles</code></p>
+          <p class="caption">Builds nine-section source candidate bundles for all four companies.</p>
         </div>
         <div class="panel">
-          <h3>Run artifacts</h3>
-          <p><code>runs/&lt;timestamp&gt;/</code></p>
-          <p class="caption">Contains per-company research, result JSON, prompt and model metadata, validation reports, errors and the final execution log.</p>
+          <h3>Approved-signal research</h3>
+          <p><code>npm run research:signals</code></p>
+          <p class="caption">Reads validated maps from <code>signal_maps/</code> and searches only declared evidence requirements.</p>
         </div>
       </div>
     </section>
 
     <section>
       <p class="eyebrow">Known limitations</p>
-      <h2>Where judgement still matters</h2>
+      <h2>What the system does not claim</h2>
       <div class="grid">
-        <article class="card"><h3>Disclosure gaps</h3><p>Companies do not report every quarterly input needed for a clean bridge. The agent must disclose approximations instead of presenting them as facts.</p></article>
-        <article class="card"><h3>Model sensitivity</h3><p>Scenario selection can vary when evidence is ambiguous. Deterministic calculations and explicit scenario bounds limit the impact.</p></article>
-        <article class="card"><h3>Time and API failures</h3><p>Parallel execution reduces runtime, while isolated outputs and targeted retries prevent one failed company from corrupting the run.</p></article>
+        <article class="card"><h3>Discovery is fallible</h3><p>Tavily or a model may miss material evidence. Missing sections and unresolved URLs remain explicit.</p></article>
+        <article class="card"><h3>Review is bounded</h3><p>The reviewer finds unsupported output; it cannot prove whether knowledge came from model training.</p></article>
+        <article class="card"><h3>Accuracy is separate</h3><p>Replayability and provenance do not guarantee forecast accuracy. Company-specific judgement still matters.</p></article>
       </div>
     </section>
 
     <footer>
-      Self-contained architecture document. No external fonts, scripts, images or network requests are required. Replace the final command only if the implemented entry point differs.
+      Self-contained architecture document. No external fonts, scripts, images or network requests are required.
     </footer>
   </main>
 </body>

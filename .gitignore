@@ -26,6 +26,8 @@ coverage/
 
 # === Local-only research & agent caches ===
 research/
+research_runs/
+signal_maps/
 scripts/data/.cache_*/
 
 # === Generated submission artifacts ===
