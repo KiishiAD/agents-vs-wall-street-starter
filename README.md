@@ -104,6 +104,14 @@ npm run research:signals
 
 The second planner searches only evidence declared by approved signals. `signal_agent.research_validation` validates profile coverage, exact quotations, signal formulas, units, accounting basis, decimal-string observations, audit metadata and the independent review before emitting `forecast_input.v2`. The repository skill at `.agents/skills/researching-company-signals/` documents the operator workflow.
 
+## Deterministic forecast compilation
+
+[`FORECASTING.md`](FORECASTING.md) documents the compact, source-frozen
+`signal_handoff.v1` contract and the Decimal-only forecast compiler. It supports
+direct guidance, annual guidance-to-quarter bridges, weighted rate bridges, and
+explicit component sums, then writes a workbook-facing forecast file plus a
+replayable receipt.
+
 ## Repository map
 
 ```text

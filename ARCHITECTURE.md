@@ -76,6 +76,14 @@ Modifiers remain qualitative. Scenario triggers produce explicit conditional sce
 
 If evidence is missing or invalid, the signal is rejected and the declared anchor or baseline stays unchanged.
 
+The compact `signal_handoff.v1` moves verified facts, guidance, qualitative
+signals, and frozen sources into the forecasting engine. The engine uses only a
+declared Decimal formula: direct guidance, an annual-to-quarter bridge using
+sourced historical seasonality, a weighted percentage bridge, or an explicit
+component sum. It writes a workbook-facing value and a separate receipt. A
+qualitative signal never changes the base value, and unresolved evidence blocks
+the affected metric.
+
 ## What is saved
 
 Every forecast-driving value keeps this chain:

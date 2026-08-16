@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from decimal import Decimal
@@ -9,6 +11,8 @@ from pathlib import Path
 
 from forecasting.handoff import HandoffValidationError, load_signal_handoff
 from forecasting.handoff_engine import forecast_company
+from forecasting.handoff_receipt import build_company_forecast_payload, build_handoff_receipt
+from forecasting.model_catalog import model_templates
 
 
 QUOTE = "Management issued the disclosed guidance used in this example."
@@ -99,13 +103,15 @@ class HandoffForecasterTests(unittest.TestCase):
                 "method": "annual_growth_bridge",
                 "priorYearFactId": "fy2025_sales",
                 "reportedYtdFactIds": ["q1_sales"],
-                "remainingPeriodWeights": {"FY2026Q2": "0.30", "FY2026Q3": "0.50"},
+                "seasonalityFactIds": {"FY2026Q2": "fy2025_q2_sales", "FY2026Q3": "fy2025_q3_sales"},
             },
             {"range": ["5", "15"], "unit": "%", "period": "FY2026", "measure": "sales growth"},
         )
         facts = [
             self._fact("fy2025_sales", "1000", period="FY2025"),
             self._fact("q1_sales", "200", period="FY2026Q1"),
+            self._fact("fy2025_q2_sales", "30", period="FY2025Q2"),
+            self._fact("fy2025_q3_sales", "50", period="FY2025Q3"),
         ]
 
         result = self._forecast(self._handoff([metric], facts))
@@ -121,11 +127,16 @@ class HandoffForecasterTests(unittest.TestCase):
             "comparable_sales", "%",
             {
                 "method": "weighted_rate_bridge",
-                "knownRates": [{"factId": "q1_comps", "weight": "0.20"}],
+                "knownRates": [{"factId": "q1_comps", "weightFactId": "fy2025_q1_sales"}],
+                "historicalTotalFactId": "fy2025_sales",
             },
             {"range": ["2", "4"], "unit": "%", "period": "FY2026", "measure": "comparable sales growth"},
         )
-        facts = [self._fact("q1_comps", "1", unit="%", period="FY2026Q1")]
+        facts = [
+            self._fact("q1_comps", "1", unit="%", period="FY2026Q1"),
+            self._fact("fy2025_q1_sales", "200", period="FY2025Q1"),
+            self._fact("fy2025_sales", "1000", period="FY2025"),
+        ]
 
         result = self._forecast(self._handoff([metric], facts))
 
@@ -155,6 +166,61 @@ class HandoffForecasterTests(unittest.TestCase):
 
         with self.assertRaises(HandoffValidationError):
             load_signal_handoff(path, repository_root=self.root)
+
+    def test_receipt_preserves_exact_decimals_while_workbook_payload_is_numeric(self) -> None:
+        metric = self._metric(
+            "revenue", "USDm", {"method": "direct_guidance"},
+            {"range": ["3800.1", "4000.2"], "unit": "USDm", "period": "FY2026Q2"},
+        )
+        path = self.root / "handoff.json"
+        path.write_text(json.dumps(self._handoff([metric])), encoding="utf-8")
+        handoff = load_signal_handoff(path, repository_root=self.root)
+        result = forecast_company(handoff)
+
+        receipt = build_handoff_receipt(handoff, result)
+        payload = build_company_forecast_payload(result)
+
+        self.assertEqual(receipt["forecasts"][0]["value"], "3900.15")
+        self.assertEqual(payload["forecasts"][0]["value_decimal"], "3900.15")
+        self.assertIsInstance(payload["forecasts"][0]["value"], float)
+
+    def test_unresolved_evidence_blocks_a_affected_metric(self) -> None:
+        metric = self._metric(
+            "revenue", "USDm", {"method": "direct_guidance"},
+            {"range": ["3800", "4000"], "unit": "USDm", "period": "FY2026Q2"},
+        )
+        payload = self._handoff([metric])
+        payload["unresolved"] = [{"targetMetricIds": ["revenue"], "reason": "conflicting guidance"}]
+
+        with self.assertRaisesRegex(HandoffValidationError, "unresolved evidence"):
+            self._forecast(payload)
+
+    def test_catalogue_covers_three_target_metrics_per_challenge_company(self) -> None:
+        for company_id in ("HD", "ADI", "HAS", "DE"):
+            self.assertEqual(len(model_templates(company_id)), 3)
+
+    def test_cli_writes_workbook_payload_and_replayable_receipt(self) -> None:
+        metric = self._metric(
+            "revenue", "USDm", {"method": "direct_guidance"},
+            {"range": ["3800", "4000"], "unit": "USDm", "period": "FY2026Q2"},
+        )
+        handoff_path = self.root / "handoff.json"
+        output_path = self.root / "forecasts" / "EX.json"
+        receipt_path = self.root / "receipts" / "EX.json"
+        handoff_path.write_text(json.dumps(self._handoff([metric])), encoding="utf-8")
+
+        completed = subprocess.run(
+            [
+                sys.executable, "-m", "forecasting.cli", "--company", "EX",
+                "--input", str(handoff_path), "--output", str(output_path),
+                "--receipt", str(receipt_path), "--repository-root", str(self.root),
+            ],
+            text=True, capture_output=True, check=False,
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(json.loads(output_path.read_text())["forecasts"][0]["value_decimal"], "3900")
+        self.assertEqual(json.loads(receipt_path.read_text())["schemaVersion"], "forecast_receipt.v1")
 
 
 if __name__ == "__main__":
