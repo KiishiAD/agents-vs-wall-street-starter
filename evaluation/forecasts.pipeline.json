@@ -1,0 +1,26 @@
+{
+  "ADI": {
+    "_basis": "Multi-agent pipeline consensus over the frozen corpus; every value has a provenance receipt in build/.",
+    "Revenue": 3900.0,
+    "Adjusted diluted EPS": 3.3,
+    "Adjusted gross margin": 73.0
+  },
+  "HD": {
+    "_basis": "Multi-agent pipeline consensus over the frozen corpus; every value has a provenance receipt in build/.",
+    "Net sales": 45277.0,
+    "Adjusted diluted EPS": 4.68,
+    "Comparable sales, total company": 1.0
+  },
+  "HAS": {
+    "_basis": "Multi-agent pipeline consensus over the frozen corpus; every value has a provenance receipt in build/.",
+    "Net fees": 900.0,
+    "Pre-exceptional basic EPS": 1.31,
+    "Pre-exceptional operating profit": 41.5
+  },
+  "DE": {
+    "_basis": "Multi-agent pipeline consensus over the frozen corpus; every value has a provenance receipt in build/.",
+    "Worldwide net sales and revenues": 12000.0,
+    "Diluted EPS (GAAP)": 4.55,
+    "Production & Precision Ag operating profit": 525.0
+  }
+}

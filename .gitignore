@@ -32,7 +32,7 @@ scripts/data/.cache_*/
 
 # === Generated submission artifacts ===
 entry.json
-submission/*.xlsx
+# submission/*.xlsx  — committed: the four final forecast workbooks
 
 # Note: logs/run-*.log are intentionally committed (final-run proof — see logs/README.md)
 data/*.db

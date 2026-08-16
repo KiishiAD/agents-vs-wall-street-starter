@@ -78,6 +78,77 @@ python3 example.py
 
 The example uses ADI's 20 May 2026 SEC-filed earnings release and writes `build/example-adi-revenue-receipt.json`. The receipt preserves the SEC URL, local corpus path, SHA-256, exact quotation, signal decision and Decimal formula. Read [ARCHITECTURE.md](ARCHITECTURE.md) for the Red/Blue worker workflow and limits.
 
+## Run it
+
+One command runs the whole thing — forecast all 12 metrics (four companies × three) through the four-agent pipeline, fill the four submission workbooks from that output, and validate them:
+
+```bash
+./scripts/forecast.sh          # or:  npm run forecast
+```
+
+That runs three steps and leaves `submission/HD-FY2026Q2.xlsx`, `ADI-FY2026Q3.xlsx`, `HAS-FY2026.xlsx`, `DE-FY2026Q3.xlsx` ready for manual upload:
+
+1. **Pipeline** — `python3 run.py --workers 4` forecasts every metric (initialiser → signal extractor → analyst consensus), in parallel, printing the numbers.
+2. **Workbooks** — `python3 scripts/pipeline_workbooks.py` fills the templates from the pipeline output, following the output guidelines (refuses on any label/unit mismatch).
+3. **Check** — `npm run check:forecasts` runs the organisers' own workbook validation.
+
+First time only: `npm install && pip3 install -r requirements.txt` (the workbook writer needs `openpyxl`).
+
+## One-command run (numbers only)
+
+`run.py` runs the four-agent pipeline (initialiser → signal extractor → analyst consensus) over the deterministic engine and returns the forecast numbers. The numbers you want are declared in `forecasts.json` — each job names a company profile, a target metric and the source-backed observations to resolve — so you configure which figures to produce without touching code.
+
+```bash
+python3 run.py                          # run every configured job, print the numbers
+python3 run.py --company ADI            # filter by ticker / company / job id
+python3 run.py --metric ADI_REVENUE_FY2026Q3
+python3 run.py --json                   # machine-readable values on stdout
+python3 run.py --write-traces           # also refresh each job's dashboard trace
+python3 run.py --workers 4              # run jobs in parallel (default: auto per CPU)
+python3 run.py --retries 3              # retries per step on transient failure
+python3 run.py --config path/to/other.json
+```
+
+Each job writes a full provenance receipt to `build/<job>-receipt.json`. The exit code is non-zero if any run fails its challenge, so `python3 run.py` is safe to gate a submission on.
+
+**Agents (Pydantic-AI on OpenAI).** The signal-extractor sub-agents and the analyst reviewers are spawned as Pydantic-AI agents with typed outputs, on `openai:gpt-5.6-sol` (override with `FORECAST_AGENT_MODEL`). The model only produces reasoning/verdicts — the number is always computed by the deterministic engine. Every receipt carries an `agents` block, and the CLI prints whether the harness is live or in fallback.
+
+By default the harness is **off** and the pipeline uses a deterministic fallback (so offline runs and tests are reproducible). To actually spawn agents:
+
+```bash
+pip3 install -r requirements.txt     # includes pydantic-ai
+export OPENAI_API_KEY=sk-...          # a real key
+python3 run.py --company ADI          # → agents: openai:gpt-5.6-sol — live agents, N spawned
+```
+
+With no `pydantic-ai` installed or no `OPENAI_API_KEY`, `run.py` prints `deterministic fallback (offline)` and spawns nothing — the forecast numbers are identical either way (the agents write reasoning, not numbers).
+
+**Evidence search (Tavily).** In the signal-extractor stage each sub-agent web-searches for its signal's evidence via Tavily. Set `TAVILY_API_KEY` to issue live queries; with no key the run falls back to the frozen corpus and records the query it would have run, so the web-search stage is always visible in the trace and the run stays deterministic. Every receipt carries an `evidenceSearch` block.
+
+**Resilience.** Every job runs in isolation and the batch never aborts halfway. A transient error is retried with backoff; a single bad observation (e.g. a quotation that no longer verifies) is dropped so the rest of the signal map still produces a number (a `degraded` run); and any job that still cannot produce a value is recorded as `failed` while the others continue. Jobs run in parallel by default.
+
+### Per-company launchers
+
+`scripts/run/` has a launcher per company plus a parallel `all`:
+
+```bash
+scripts/run/adi.sh          # one company (ADI, HD, HAS, DE)
+scripts/run/adi.sh --json   # flags pass straight through to run.py
+scripts/run/all.sh          # all four in parallel, one process + log each
+```
+
+`scripts/run/all.sh` writes each company's output to `logs/run-<TICKER>-<id>.log`, prints a per-company pass/fail summary and exits non-zero if any run failed. A company with no source-backed profile yet (currently HD, HAS, DE) reports "not configured yet" and exits cleanly, so the launchers are ready the moment each profile is wired into `forecasts.json`.
+
+## Parallel tests
+
+`scripts/test_parallel.py` runs each test module in its own subprocess concurrently — one part per worker — for fast feedback and isolation:
+
+```bash
+python3 scripts/test_parallel.py                 # all modules, one worker each
+python3 scripts/test_parallel.py --workers 4
+python3 scripts/test_parallel.py test_pipeline test_run   # a subset
+```
+
 Run the compiler tests with:
 
 ```bash

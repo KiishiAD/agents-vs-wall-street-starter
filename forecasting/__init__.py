@@ -16,12 +16,18 @@ from .contracts import (
 )
 from .challenge import ChallengeIssue, ChallengeReport, challenge_forecast
 from .engine import ForecastValidationError, compile_forecast
-from .handoff import HandoffValidationError, SignalHandoff, load_signal_handoff
-from .handoff_engine import CompanyForecast, MetricForecast, forecast_company
-from .handoff_receipt import build_company_forecast_payload, build_handoff_receipt, write_handoff_receipt
-from .model_catalog import MetricModelTemplate, model_templates
+from .pipeline import (
+    AnalystReport,
+    InitialiserReport,
+    PipelineRun,
+    PipelineTrace,
+    SignalExtraction,
+    SubAgentCandidate,
+    build_profile,
+    run_pipeline,
+)
 from .profile import ProfileValidationError, load_company_profile
-from .receipt import build_run_receipt, write_run_receipt
+from .receipt import build_pipeline_receipt, build_run_receipt, write_run_receipt
 from .resolvers import (
     ObservationValidationError,
     resolve_explicit_driver,
@@ -31,6 +37,7 @@ from .resolvers import (
 )
 
 __all__ = [
+    "AnalystReport",
     "ChallengeIssue",
     "ChallengeReport",
     "Company",
@@ -40,34 +47,31 @@ __all__ = [
     "ForecastResult",
     "ForecastScenario",
     "ForecastValidationError",
-    "HandoffValidationError",
-    "SignalHandoff",
-    "CompanyForecast",
-    "MetricForecast",
-    "MetricModelTemplate",
+    "InitialiserReport",
     "MetricDefinition",
     "NumericRange",
     "ObservationValidationError",
     "ObservationDecision",
+    "PipelineRun",
+    "PipelineTrace",
     "ProfileValidationError",
     "SignalDefinition",
+    "SignalExtraction",
     "SignalObservation",
     "SignalRole",
     "SourceDocument",
     "SourcedClaim",
+    "SubAgentCandidate",
+    "build_pipeline_receipt",
+    "build_profile",
     "build_run_receipt",
     "challenge_forecast",
     "compile_forecast",
-    "forecast_company",
-    "load_signal_handoff",
-    "model_templates",
-    "build_company_forecast_payload",
-    "build_handoff_receipt",
-    "write_handoff_receipt",
     "load_company_profile",
     "resolve_explicit_driver",
     "resolve_management_guidance",
     "resolve_qualitative_modifier",
     "resolve_scenario_trigger",
+    "run_pipeline",
     "write_run_receipt",
 ]

@@ -6,11 +6,11 @@ from pathlib import Path
 from forecasting import (
     ChallengeReport,
     ForecastResult,
-    challenge_forecast,
-    compile_forecast,
+    PipelineTrace,
     load_company_profile,
     resolve_management_guidance,
     resolve_qualitative_modifier,
+    run_pipeline,
     write_run_receipt,
 )
 
@@ -30,7 +30,9 @@ DEMAND_OUTLOOK_QUOTE = (
 )
 
 
-def run(output_path: str | Path = DEFAULT_OUTPUT) -> tuple[ForecastResult, ChallengeReport]:
+def run(
+    output_path: str | Path = DEFAULT_OUTPUT,
+) -> tuple[ForecastResult, ChallengeReport, PipelineTrace]:
     profile = load_company_profile(
         ROOT / "examples" / "adi_profile.json",
         repository_root=ROOT,
@@ -64,14 +66,15 @@ def run(output_path: str | Path = DEFAULT_OUTPUT) -> tuple[ForecastResult, Chall
         assessment="Management expects continued strong Q3 growth; retain as range context only.",
         period="FY2026Q3",
     )
-    result = compile_forecast(
+    run_result = run_pipeline(
         profile,
         "ADI_REVENUE_FY2026Q3",
         [anchor, bookings, demand_outlook],
     )
-    report = challenge_forecast(profile, result)
-    write_run_receipt(profile, result, report, output_path)
-    return result, report
+    write_run_receipt(
+        run_result.profile, run_result.result, run_result.challenge, output_path, pipeline=run_result.trace
+    )
+    return run_result.result, run_result.challenge, run_result.trace
 
 
 def main() -> int:
@@ -83,14 +86,19 @@ def main() -> int:
         help="Path for the deterministic provenance receipt.",
     )
     args = parser.parse_args()
-    result, report = run(args.output)
+    result, report, pipeline = run(args.output)
     warning_count = sum(issue.severity == "warning" for issue in report.issues)
+    discarded = sum(e.discarded for e in pipeline.extractions)
     print("ADI FY2026Q3 revenue")
     print(f"downside: {result.base_range.low} {result.units}")
     print(f"base:     {result.base_forecast} {result.units}")
     print(f"upside:   {result.base_range.high} {result.units}")
     print(f"formula:  {result.formula}")
     print(f"challenge: {'PASS' if report.passed else 'FAIL'} ({warning_count} warning(s))")
+    print(
+        f"pipeline: {pipeline.subagents_per_signal} sub-agents/signal, "
+        f"{discarded} biased discarded; {pipeline.analyst.agreement}"
+    )
     print(f"receipt:  {args.output}")
     return 0
 

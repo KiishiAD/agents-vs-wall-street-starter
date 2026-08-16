@@ -1,0 +1,273 @@
+{
+  "informationCutoff": "2026-08-16T17:15:00+01:00",
+  "jobs": [
+    {
+      "id": "adi-revenue",
+      "profile": "examples/adi_profile.json",
+      "metric": "ADI_REVENUE_FY2026Q3",
+      "trace": "dashboard/server/traces/analog-devices.json",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "adi_revenue_guidance",
+          "source_id": "adi-fy2026q2-earnings-release",
+          "exact_quote": "For the third quarter of fiscal 2026, we are forecasting revenue of $3.9 billion, +/- $100 million.",
+          "locator": "Outlook for the Third Quarter of Fiscal Year 2026, first paragraph",
+          "low": "3800",
+          "high": "4000",
+          "units": "USDm",
+          "period": "FY2026Q3"
+        },
+        {
+          "resolver": "qualitative_modifier",
+          "signal_id": "adi_b2b_bookings",
+          "source_id": "adi-fy2026q2-earnings-release",
+          "exact_quote": "We continued to see growing demand in the second quarter with record bookings across our B2B markets of Industrial, Automotive, and Communications",
+          "locator": "Management quotations, CFO statement",
+          "assessment": "Bookings are constructive, but the release does not provide a calibrated revenue increment.",
+          "period": "FY2026Q3"
+        },
+        {
+          "resolver": "qualitative_modifier",
+          "signal_id": "adi_q3_demand_outlook",
+          "source_id": "adi-fy2026q2-earnings-release",
+          "exact_quote": "These positive demand signals are reflected in our outlook for continued strong growth in the third quarter.",
+          "locator": "Management quotations, CFO statement",
+          "assessment": "Management expects continued strong Q3 growth; retain as range context only.",
+          "period": "FY2026Q3"
+        }
+      ]
+    },
+    {
+      "id": "hd-net-sales",
+      "profile": "examples/hd_profile.json",
+      "metric": "HD_NET_SALES_FY2026Q2",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "hd_net_sales_anchor",
+          "source_id": "hd-fy2025q2-earnings-release",
+          "exact_quote": "Net sales | $ | 45,277 |",
+          "locator": "Q2 FY2025 earnings release, Condensed Consolidated Statements of Earnings, Net sales for the Three Months Ended August 3, 2025 = $45,277 million (prior-year same-quarter actual used as a seasonal proxy for FY2026Q2; opening paragraph also states 'reported sales of $45.3 billion for the second quarter of fiscal 2025')",
+          "low": "45277",
+          "high": "45277",
+          "units": "USDm",
+          "period": "FY2026Q2"
+        }
+      ]
+    },
+    {
+      "id": "hd-adj-eps",
+      "profile": "examples/hd_profile.json",
+      "metric": "HD_ADJ_EPS_FY2026Q2",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "hd_adj_eps_anchor",
+          "source_id": "hd-fy2025q2-earnings-release",
+          "exact_quote": "Adjusted diluted earnings per share for the second quarter of fiscal 2025 were $4.68",
+          "locator": "Q2 FY2025 earnings release, adjusted EPS paragraph; Reconciliation of Adjusted Diluted Earnings Per Share = $4.68 for the Three Months Ended August 3, 2025 (prior-year same-quarter actual used as a seasonal proxy for FY2026Q2)",
+          "low": "4.68",
+          "high": "4.68",
+          "units": "USD / share",
+          "period": "FY2026Q2"
+        }
+      ]
+    },
+    {
+      "id": "hd-comp-sales",
+      "profile": "examples/hd_profile.json",
+      "metric": "HD_COMP_SALES_FY2026Q2",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "hd_comp_sales_anchor",
+          "source_id": "hd-fy2026q1-earnings-release",
+          "exact_quote": "Comparable sales growth of approximately flat to 2.0%",
+          "locator": "Q1 FY2026 earnings release, Fiscal 2026 Guidance bullet list",
+          "low": "0",
+          "high": "2.0",
+          "units": "%",
+          "period": "FY2026Q2"
+        }
+      ]
+    },
+    {
+      "id": "adi-adj-eps",
+      "profile": "examples/adi_profile.json",
+      "metric": "ADI_ADJ_EPS_FY2026Q3",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "adi_adj_eps_guidance",
+          "source_id": "adi-fy2026q2-earnings-release",
+          "exact_quote": "We are planning for reported EPS to be $2.60, +/-$0.15, and adjusted EPS to be $3.30, +/-$0.15.",
+          "locator": "Outlook for the Third Quarter of Fiscal Year 2026, first paragraph",
+          "low": "3.15",
+          "high": "3.45",
+          "units": "USD / share",
+          "period": "FY2026Q3"
+        }
+      ]
+    },
+    {
+      "id": "adi-adj-gross-margin",
+      "profile": "examples/adi_profile.json",
+      "metric": "ADI_ADJ_GROSS_MARGIN_FY2026Q3",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "adi_adj_gross_margin_guidance",
+          "source_id": "adi-fy2026q2-earnings-release",
+          "exact_quote": "Adjusted gross margin percentage | 73.0 | %",
+          "locator": "Q2 FY2026 condensed results table, adjusted gross margin percentage (73.0%). The release gives no Q3 gross-margin outlook, so the most recent reported adjusted gross margin is used as a source-backed proxy anchor.",
+          "low": "72.0",
+          "high": "74.0",
+          "units": "%",
+          "period": "FY2026Q3"
+        }
+      ]
+    },
+    {
+      "id": "has-net-fees",
+      "profile": "examples/has_profile.json",
+      "metric": "HAS_NET_FEES_FY2026",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "has_net_fees_anchor",
+          "source_id": "has-fy2025-preliminary-results",
+          "exact_quote": "Net fees for the year ended 30 June 2025 decreased by 11% on a like-for-like basis, and by 13% on a reported basis, to £972.4 million.",
+          "locator": "FY2025 Preliminary Results, Financial Review, Turnover and net fees. Most recent reported full-year net fees (£972.4m); FY2026 tracked down ~9% in H1 and ~5% LFL in Q4, so the FY2026 starting range is set below this base (880-920 GBPm) pending the 20 Aug 2026 full-year results.",
+          "low": "880",
+          "high": "920",
+          "units": "GBPm",
+          "period": "FY2026"
+        }
+      ]
+    },
+    {
+      "id": "has-preexc-eps",
+      "profile": "examples/has_profile.json",
+      "metric": "HAS_PREEXC_BASIC_EPS_FY2026",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "has_preexc_eps_anchor",
+          "source_id": "has-fy2025-preliminary-results",
+          "exact_quote": "The Group's pre-exceptional basic earnings per share (EPS) of 1.31p was 67% lower than the prior year.",
+          "locator": "FY2025 Preliminary Results, Earnings per share section. Most recent reported full-year pre-exceptional basic EPS (1.31p) used as the FY2026 starting proxy, consistent with FY2026 pre-exceptional operating profit guided broadly in line with FY2025.",
+          "low": "1.31",
+          "high": "1.31",
+          "units": "GBp",
+          "period": "FY2026"
+        }
+      ]
+    },
+    {
+      "id": "has-preexc-op-profit",
+      "profile": "examples/has_profile.json",
+      "metric": "HAS_PREEXC_OP_PROFIT_FY2026",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "has_preexc_op_profit_anchor",
+          "source_id": "has-q4-fy2026-trading-update",
+          "exact_quote": "we currently expect FY26 pre -exceptional operating profit will be at the top of the £37.0 -46.0m consensus range",
+          "locator": "Q4 FY2026 Quarterly Trading Update (10 July 2026), Highlights / Trading outlook. Company-compiled consensus of £43.5m, range £37.0-46.0m, based on 10 analysts; management guides to the top of the range.",
+          "low": "37.0",
+          "high": "46.0",
+          "units": "GBPm",
+          "period": "FY2026"
+        }
+      ]
+    },
+    {
+      "id": "de-net-sales-rev",
+      "profile": "examples/de_profile.json",
+      "metric": "DE_NET_SALES_REV_FY2026Q3",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "de_net_sales_rev_anchor",
+          "source_id": "de-fy2026q2-earnings-release",
+          "exact_quote": "Worldwide net sales and revenues increased 5 percent, to $13.369 billion, for the second quarter of 2026",
+          "locator": "Second Quarter 2026 earnings release, net sales and revenues paragraph",
+          "low": "13369",
+          "high": "13369",
+          "units": "USDm",
+          "period": "FY2026Q3"
+        },
+        {
+          "resolver": "explicit_driver",
+          "signal_id": "de_net_sales_rev_seasonal_driver",
+          "source_id": "de-fy2019q3-earnings-release",
+          "exact_quote": "Worldwide net sales and revenues decreased 3 percent, to $10.036 billion, for the third quarter of 2019",
+          "locator": "Third Quarter 2019 earnings release, net sales and revenues paragraph (fiscal-Q3 figure below the preceding fiscal-Q2 peak; used as a prior-year-Q3 seasonal-magnitude proxy)",
+          "adjustment": "-1369",
+          "units": "USDm",
+          "period": "FY2026Q3",
+          "calculation": "Seasonal step-down: fiscal Q3 is below the fiscal-Q2 peak; -1,369 USDm moves the Q2 FY2026 peak anchor (13,369) to a Q3-aligned ~12,000."
+        }
+      ]
+    },
+    {
+      "id": "de-diluted-eps-gaap",
+      "profile": "examples/de_profile.json",
+      "metric": "DE_DILUTED_EPS_GAAP_FY2026Q3",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "de_diluted_eps_anchor",
+          "source_id": "de-fy2026q2-earnings-release",
+          "exact_quote": "or $6.55 per share",
+          "locator": "Second Quarter 2026 earnings release, net income paragraph (fully diluted EPS $6.55)",
+          "low": "6.55",
+          "high": "6.55",
+          "units": "USD / share",
+          "period": "FY2026Q3"
+        },
+        {
+          "resolver": "explicit_driver",
+          "signal_id": "de_diluted_eps_seasonal_driver",
+          "source_id": "de-fy2019q3-earnings-release",
+          "exact_quote": "or $2.81 per share, compared with net income of $910 million",
+          "locator": "Third Quarter 2019 earnings release, net income paragraph (fiscal-Q3 EPS below the preceding fiscal-Q2 result; used as a prior-year-Q3 seasonal-magnitude proxy)",
+          "adjustment": "-2.00",
+          "units": "USD / share",
+          "period": "FY2026Q3",
+          "calculation": "Seasonal step-down: fiscal Q3 EPS is below the fiscal-Q2 peak; -2.00 USD/share moves the Q2 FY2026 peak anchor (6.55) to a Q3-aligned ~4.55."
+        }
+      ]
+    },
+    {
+      "id": "de-ppa-op-profit",
+      "profile": "examples/de_profile.json",
+      "metric": "DE_PPA_OP_PROFIT_FY2026Q3",
+      "observations": [
+        {
+          "resolver": "management_guidance",
+          "signal_id": "de_ppa_op_profit_anchor",
+          "source_id": "de-fy2026q2-earnings-release",
+          "exact_quote": "| Operating profit | ​ | $ | 706 | ​ | $ | 1,148 | ​ | -39% | ​ |",
+          "locator": "Second Quarter 2026 earnings release, Production & Precision Agriculture segment table (operating profit $706m)",
+          "low": "706",
+          "high": "706",
+          "units": "USDm",
+          "period": "FY2026Q3"
+        },
+        {
+          "resolver": "explicit_driver",
+          "signal_id": "de_ppa_op_profit_seasonal_driver",
+          "source_id": "de-fy2026q2-earnings-release",
+          "exact_quote": "Net Sales Operating Margin 5-10% 11-13%",
+          "locator": "Second Quarter 2026 earnings release, Production & Precision Ag Business Segment Outlook (FY2026 operating margin 11-13% vs 15.7% Q2 peak margin; guides lower back-half operating profit)",
+          "adjustment": "-181",
+          "units": "USDm",
+          "period": "FY2026Q3",
+          "calculation": "Seasonal step-down: FY2026 PPA operating-margin outlook of 11-13% is below the 15.7% Q2 peak margin, implying lower Q3 profit; -181 USDm moves the Q2 FY2026 peak anchor (706) to a Q3-aligned ~525."
+        }
+      ]
+    }
+  ]
+}

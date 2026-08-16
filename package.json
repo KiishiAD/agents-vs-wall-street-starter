@@ -4,21 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "forecast": "./scripts/forecast.sh",
+    "run": "python3 run.py",
+    "workbooks": "python3 scripts/pipeline_workbooks.py",
+    "test": "python3 scripts/test_parallel.py",
     "setup:entry": "node scripts/setup-entry.mjs",
     "check:entry": "node scripts/check-entry.mjs",
     "check:forecasts": "node scripts/check-forecasts.mjs submission",
-    "check:submission": "npm run check:entry && npm run check:forecasts",
-    "forecast": "./scripts/run.sh",
-    "validate": "python3 scripts/validate_forecasts.py evaluation/forecasts.json",
-    "write": "python3 scripts/write_workbooks.py",
-    "test:starter": "python3 -m unittest discover -s starter -p 'test_*.py'",
-    "test:signals": "python3 -m unittest discover -s tests -p 'test_signal_*.py'",
-    "signal:reports": "python3 -m signal_agent.cli --signal financial_reports",
-    "signal:forecast-input": "python3 -m signal_agent.forecast_input",
-    "research:profiles": "python3 -m signal_agent.company_research --stage profile",
-    "research:signals": "python3 -m signal_agent.company_research --stage signals",
-    "test:research": "python3 -m unittest discover -s tests -p 'test_*research*.py'",
-    "pipeline": "python3 -m pipeline.run"
+    "check:submission": "npm run check:entry && npm run check:forecasts"
   },
   "dependencies": {
     "xlsx": "^0.18.5"

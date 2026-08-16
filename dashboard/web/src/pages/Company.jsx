@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useLive, matchSlug } from "../live.jsx";
 import { Card } from "@/components/ui/card";
 import CompanyProfile from "../components/CompanyProfile.jsx";
+import DecisionTrail from "../components/DecisionTrail.jsx";
 import {
   AreaChart,
   Gauge,
@@ -37,7 +38,7 @@ export default function Company() {
   if (loading && !data) return <div className="text-sm text-muted-foreground">Loading {slug}…</div>;
   if (!data) return <div>Company not found.</div>;
 
-  const { company, forecast, signals, agents, runs, profile } = data;
+  const { company, forecast, signals, agents, runs, profile, trace } = data;
   const activeRuns = runs.filter((r) => r.status === "running");
 
   return (
@@ -115,6 +116,21 @@ export default function Company() {
           <CompanyProfile profile={profile} />
         </section>
       )}
+
+      {/* decision trail */}
+      <section className="my-6">
+        {trace ? (
+          <DecisionTrail trace={trace} />
+        ) : (
+          <div className="rounded-2xl border border-dashed bg-card/50 p-6 text-center">
+            <h3 className="font-heading text-base font-medium">Decision trail</h3>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              A clickable trace from each source and quotation through to the forecast formula.
+              <span className="mt-1 block font-mono text-xs">trace pending for {company.ticker}</span>
+            </p>
+          </div>
+        )}
+      </section>
 
       {/* agents + signals */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
